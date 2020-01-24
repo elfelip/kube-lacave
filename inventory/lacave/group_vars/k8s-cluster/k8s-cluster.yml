@@ -27,7 +27,9 @@ kube_image_repo: "{{ gcr_image_repo }}/google-containers"
 
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
-local_release_dir: "/tmp/releases"
+#local_release_dir: "/tmp/releases"
+local_release_dir: "{{ansible_env.HOME}}/releases"
+
 # Random shifts for retrying failed ops like pushing/downloading
 retry_stagger: 5
 
@@ -132,7 +134,8 @@ cluster_name: kube.lacave
 # Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
 ndots: 2
 # Can be coredns, coredns_dual, manual or none
-dns_mode: coredns
+# dns_mode: coredns
+dns_mode: none
 # Set manual server if using a custom cluster DNS server
 # manual_dns_server: 10.x.x.x
 # Enable nodelocal dns cache
@@ -187,7 +190,7 @@ dynamic_kubelet_configuration_dir: "{{ kubelet_config_dir | default(default_kube
 podsecuritypolicy_enabled: false
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
-# kubeconfig_localhost: false
+kubeconfig_localhost: true
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 # kubectl_localhost: false
 
