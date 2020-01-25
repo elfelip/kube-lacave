@@ -97,7 +97,7 @@ Pour obtenir le jeton d'authentification, lancer les commandes suivantes à part
 On peut accéder à la console par l'adresse suivante:
 
     En LABO:
-    https://qlkub01t.laboinspq.qc.ca:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#!/login
+    https://kube01.lacave:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#!/login
     Utiliser le token de l'étape précédente
 
 ## Kubectl
