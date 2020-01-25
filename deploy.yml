@@ -1,12 +1,9 @@
----
-  - hosts: all
-  - vars:
+- hosts: all
+  vars:
       kube_cluster_inventory_path: inventory/lacave/inventory.ini
-  - tasks:
-    - include: "kubespray/cluster.yml"
-
-    - name: Creer l'utilisateur admin pour le tableau de bord Kubernetes
-      k8s:
-        state: present
-        src: resources/dashboard-adminuser.yml
+  tasks:
+  - name: Creer l'utilisateur admin pour le tableau de bord Kubernetes
+    k8s:
+      state: present
+      src: resources/dashboard-adminuser.yml
 
