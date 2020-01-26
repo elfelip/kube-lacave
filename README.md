@@ -4,7 +4,7 @@ Ce projet permet de créer un cluster Kubernetes sur CoreOS
 # Création des noeuds
 Les étapes suivantes doivent être exécuté à partir du serveur Ansible principal (Serveur Jenkins)
 
-Se connecter sur le serveur Jenkins en tant que l'usager jenkins
+Se connecter sur le serveur contrôleur Ansible en tant que l'utilisateur dont la clé RSA pour SSH a été ajouté dans le authorized_keys des usagers root des serveurs CoreOS.
 
 Faire le checkout du projet et des sous-projets dans un rpertoire de travail:
 
@@ -15,22 +15,19 @@ S'assurer d'être dans le répertoire cluster-kubernetes et lancer le playbook d
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
+# Configurer Ansible
+Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
+
+	sudo apt install python3-kubernetes
+	pip3 install openshift --user
+
+
 # Installer et clonfigurer kubectl sur le serveur Ansible/Jenkins
 Pour faciliter les opérations, on peut installer et configurer kubectl sur le serveur Jenkins en effectualnt les étapes suivantes:
 
 Installer kubectl
 
-    mkdir -p /var/lib/jenkins/.local/bin
-    curl -L https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl -o /var/lib/jenkins/.local/bin/kubectl
-    chmod a+x /var/lib/jenkins/.local/bin/kubectl
-
-Configurer kubectl en récupérant la config du premier noed master
-    mkdir ~/.kube
-    scp root@qlkub01t:.kube/config ~/.kube
-
-Configurer la connexion dabs le fichier de confioguration
-    sed -i 's/10\.3\.0\.1/qlkub01t\.laboinspq\.qc\.ca/g' ~/.kube/config
-
+L'outil kubectl a été installé et configuré par le playbook de déploiment du Cluster
 
 Tester la connexion
 
