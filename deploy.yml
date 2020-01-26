@@ -1,9 +1,38 @@
 - hosts: all
   vars:
-      kube_cluster_inventory_path: inventory/lacave/inventory.ini
+      kubernetes_dashboard_version: v2.0.0-rc1
+      helm_install_url: https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
   tasks:
+  - name: Installer les packages pré-requis pour le module k8s
+    apt:
+      name: python3-kubernetes
+      state: present
+    when: ansible_os_family == Debian
+    
+  - name: Installer les packages Python
+    pip:
+      name: openshift
+      extra_args: --user
+      state: present
+
   - name: Creer l'utilisateur admin pour le tableau de bord Kubernetes
     k8s:
       state: present
       src: resources/dashboard-adminuser.yml
+      
+  - name: Installer le tableau de bord Kubernetes
+    k8s:
+      state: present
+      src: "https://raw.githubusercontent.com/kubernetes/dashboard/{{ kubernetes_dashboard_version }}/aio/deploy/recommended.yaml"
 
+  - name: Télécharger le client helm pour l'utilisateur
+    unarchive:
+      src: "{{ helm_install_url }}"
+      dest: /tmp
+      remote_src: yes
+
+  - name: Installer le client helm pour l'utilisateur
+    copy:
+      src: /tmp/linux-amd64/helm
+      dest: "{{ ansible_user_dir }}/bin/helm"
+      remote_src: yes
