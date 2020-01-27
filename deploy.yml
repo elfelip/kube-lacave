@@ -1,13 +1,14 @@
 - hosts: all
   vars:
-      kubernetes_dashboard_version: v2.0.0-rc1
-      helm_install_url: https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
+    ansible_python_interpreter: /usr/bin/python3
+    kubernetes_dashboard_version: v2.0.0-rc1
+    helm_install_url: https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
   tasks:
   - name: Installer les packages pré-requis pour le module k8s
     apt:
       name: python3-kubernetes
       state: present
-    when: ansible_os_family == Debian
+    when: ansible_os_family == "Debian"
     
   - name: Installer les packages Python
     pip:
@@ -20,10 +21,16 @@
       state: present
       src: resources/dashboard-adminuser.yml
       
+  - name: Télécharger le fichier de déploiement du dashboard
+    get_url:
+      url: "https://raw.githubusercontent.com/kubernetes/dashboard/{{ kubernetes_dashboard_version }}/aio/deploy/recommended.yaml"
+      dest: /tmp/kubedashboard.yaml
+      mode: '0644'
+
   - name: Installer le tableau de bord Kubernetes
     k8s:
       state: present
-      src: "https://raw.githubusercontent.com/kubernetes/dashboard/{{ kubernetes_dashboard_version }}/aio/deploy/recommended.yaml"
+      src: /tmp/kubedashboard.yaml
 
   - name: Télécharger le client helm pour l'utilisateur
     unarchive:
