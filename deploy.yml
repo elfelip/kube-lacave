@@ -58,3 +58,10 @@
       dest: "{{ ansible_user_dir }}/bin/istioctl"
       remote_src: yes
       mode: u=rwx,g=rx,o=rx
+
+  - name: Déployer Istio
+    command:
+      argv:
+        - "{{ ansible_user_dir }}/bin/istioctl"
+        - manifest apply
+        - --set profile=demo
