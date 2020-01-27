@@ -52,3 +52,9 @@
       dest: "{{ ansible_user_dir }}/bin"
       remote_src: yes
 
+  - name: Installer istioctl pour l'utilisateur
+    copy:
+      src: "{{ ansible_user_dir }}/bin/istio-1.4.3/bin/istioctl"
+      dest: "{{ ansible_user_dir }}/bin/istioctl"
+      remote_src: yes
+      mode: u=rwx,g=rx,o=rx
