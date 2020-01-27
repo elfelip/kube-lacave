@@ -47,7 +47,7 @@
 
   - name: Télécharger istioctl pour l'utilisateur
     unarchive:
-      src: "{{ istioctl_install_url }}"
+      src: "{{ istio_install_url }}"
       dest: "{{ ansible_user_dir }}/bin"
       remote_src: yes
 
