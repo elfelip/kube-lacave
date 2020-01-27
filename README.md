@@ -2,7 +2,7 @@
 Ce projet permet de créer un cluster Kubernetes sur CoreOS
 
 # Création des noeuds
-Les étapes suivantes doivent être exécuté à partir du serveur Ansible principal (Serveur Jenkins)
+Les étapes suivantes doivent être exécuté à partir du serveur Ansible principal.
 
 Se connecter sur le serveur contrôleur Ansible en tant que l'utilisateur dont la clé RSA pour SSH a été ajouté dans le authorized_keys des usagers root des serveurs CoreOS.
 
@@ -15,6 +15,12 @@ S'assurer d'être dans le répertoire cluster-kubernetes et lancer le playbook d
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
+# Exécution du playbook de déploiement
+
+On peut exécuter automatiquement les étapes décrite dans le document en exécutant la commande suivante:
+
+    ansible-playbook -c local -i 'localhost,' deploy.yml
+    
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
 

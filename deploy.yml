@@ -44,6 +44,7 @@
       src: /tmp/linux-amd64/helm
       dest: "{{ ansible_user_dir }}/bin/helm"
       remote_src: yes
+      mode: u=rwx,g=rx,o=rx
 
   - name: Télécharger istioctl pour l'utilisateur
     unarchive:
