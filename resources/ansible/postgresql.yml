@@ -1,0 +1,36 @@
+---
+- hosts: all
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    pg_db_name: test
+    pg_db_username: test
+    pg_db_password: CeciEstUnTest
+    namespace_name: test
+    pg_svc_port: 5432
+  tasks:    
+  - name: Installer les packages Python
+    pip:
+      name:
+        - openshift
+        - pyhelm
+      extra_args: --user
+      state: present
+
+  - name: Créer le namespace
+    k8s:
+      state: present
+      definition: "{{ lookup('template', 'namespace.yml.j2') }}"
+
+  - name: Installer Postgres
+    helm:
+      host: localhost
+      chart:
+        name: postgresql
+        version: 8.2.1
+        source:
+          location: https://github.com/helm/charts.git
+          path: stable/postgresql
+      state: present
+      name: postgrestest
+      namespace: "{{ namespace_name }}"
+  

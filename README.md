@@ -376,3 +376,6 @@ Calico (réseau):
     calicoctl get nodes -o yaml
  
  
+# Installation Postgresql
+
+Test avec helm chart post
