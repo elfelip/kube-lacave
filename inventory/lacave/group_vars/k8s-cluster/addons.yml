@@ -102,5 +102,5 @@ ingress_nginx_secure_port: 443
 #   - --default-ssl-certificate=default/foo-tls
 
 # Cert manager deployment
-cert_manager_enabled: false
-# cert_manager_namespace: "cert-manager"
+cert_manager_enabled: true
+cert_manager_namespace: "cert-manager"
