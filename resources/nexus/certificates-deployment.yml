@@ -1,0 +1,36 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: docker-lacave-tls
+  namespace: inspq
+spec:
+  secretName: docker-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: Issuer
+  commonName: docker.lacave
+  organization:
+  - Lacave CA
+  dnsNames:
+  - docker.lacave
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: nexus-lacave-tls
+  namespace: inspq
+spec:
+  secretName: nexus-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: Issuer
+  commonName: nexus.lacave
+  organization:
+  - Lacave CA
+  dnsNames:
+  - nexus.lacave

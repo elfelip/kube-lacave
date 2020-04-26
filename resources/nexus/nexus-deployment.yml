@@ -81,36 +81,42 @@ metadata:
     namespace: inspq
     name: ingress-nexus
     annotations:
-        kubernetes.io/ingress.class: "nginx"
-        nginx.ingress.kubernetes.io/proxy-body-size: 2000m
+      kubernetes.io/ingress.class: "nginx"
+      nginx.ingress.kubernetes.io/proxy-body-size: 2000m
+      cert-manager.io/issuer: ca-lacave-issuer
 spec:
-    rules:
-    - host: nexus3.lacave
-      http:
-        paths:
-        - path: /
-          backend:
-            serviceName: nexus-service
-            servicePort: 8081
+  tls:
+  - hosts:
+    - nexus.lacave
+    secretName: nexus-lacave-tls
+  rules:
+  - host: nexus.lacave
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nexus-service
+          servicePort: 8081
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
-    namespace: inspq
-    name: ingress-docker-nexus
-    annotations:
-        kubernetes.io/ingress.class: "nginx"
-        nginx.ingress.kubernetes.io/proxy-body-size: 2000m
+  namespace: inspq
+  name: ingress-docker-nexus
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-body-size: 2000m
+    cert-manager.io/issuer: ca-lacave-issuer
 spec:
-    tls:
-    - hosts:
-      - docker.lacave
-      secretName: docker-lacave-tls
-    rules:
-    - host: docker.lacave
-      http:
-        paths:
-        - path: /
-          backend:
-            serviceName: nexus-service
-            servicePort: 5000
+  tls:
+  - hosts:
+    - docker.lacave
+    secretName: docker-lacave-tls
+  rules:
+  - host: docker.lacave
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nexus-service
+          servicePort: 5000

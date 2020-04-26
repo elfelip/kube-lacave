@@ -11,7 +11,7 @@ Faire le checkout du projet et des sous-projets dans un rpertoire de travail:
     git clone --recursive https://github.com/elfelip/kube-lacave.git
 
 
-S'assurer d'être dans le répertoire cluster-kubernetes et lancer le playbook de déploiement du cluster:
+S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de déploiement du cluster:
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
@@ -376,6 +376,7 @@ Calico (réseau):
     calicoctl get nodes -o yaml
  
  
-# Installation Postgresql
+# Installation cert-manager
 
-Test avec helm chart post
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.2/cert-manager.yaml
+
