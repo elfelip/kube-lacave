@@ -377,6 +377,16 @@ Calico (réseau):
  
  
 # Installation cert-manager
+Cert Manager peut être installé par kubespray mais la version déployé semble limité.
+On peut en installer un version plus récente avec la commande suivante:
+    kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.2/cert-manager.yaml
 
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.2/cert-manager.yaml
+# Monitoring
+On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
+On ajoute certains composants comme le node exporter permettant de monitorer les noeuds du cluster Kubernetes.
 
+Créer le namespace
+    kubectl apply - resources/monitoring/monitoring-deployment.yaml
+
+Installer le node exporter
+    helm install -n monitoring node-exporter stable/prometheus-node-exporter
