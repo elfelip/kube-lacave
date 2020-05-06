@@ -64,13 +64,13 @@ kube_oidc_auth: true
 
 kube_oidc_url: https://login.kube.lacave/auth/realms/master/
 kube_oidc_client_id: kubeapi
-kube_oidc_client_secret: a988fdd6-be60-4b78-93fd-535c843dacec
+# kube_oidc_client_secret: a988fdd6-be60-4b78-93fd-535c843dacec
 ## Optional settings for OIDC
-# kube_oidc_ca_file: "{{ kube_cert_dir }}/ca.pem"
-# kube_oidc_username_claim: sub
-# kube_oidc_username_prefix: oidc:
-# kube_oidc_groups_claim: groups
-# kube_oidc_groups_prefix: oidc:
+kube_oidc_ca_file: "{{ kube_cert_dir }}/lacave-root.pem"
+kube_oidc_username_claim: preferred_username
+kube_oidc_username_prefix: 'oidc:'
+kube_oidc_groups_claim: groups
+kube_oidc_groups_prefix: 'oidc:'
 
 
 # Choose network plugin (cilium, calico, contiv, weave or flannel. Use cni for generic cni plugin)
