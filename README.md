@@ -100,7 +100,7 @@ Pour obtenir le jeton d'authentification, lancer les commandes suivantes à part
     kubernetes-dashboard-key-holder    Opaque                                2      74s
     kubernetes-dashboard-token-mlpmn   kubernetes.io/service-account-token   3      74s
 
-    kubectl describe secret admin-user-token-f85z5 -n kubernetes-dashboard
+    kubectl describe secret -n kube-system admin-user-token-f85z5
     Name:         admin-user-token-f85z5
     Namespace:    kubernetes-dashboard
     Labels:       <none>
@@ -122,19 +122,19 @@ On peut accéder à la console par l'adresse suivante:
     URL: https://localhost:8443
 
 ## Kubectl
-L'outil kubectl est installé et configuré automatiquement sur les deux noeuds maitres du cluster Kubernetes: qlkub01t et qlkub02t pour l'utilisateur root.
+L'outil kubectl est installé et configuré automatiquement sur les deux noeuds maitres du cluster Kubernetes: kube01 et kube03 pour l'utilisateur root.
 
-Il est possible de l'installer sur une autre machine. Pour configurer la connexion et l'authentification du client, on peut récupérer les informations qui sont dans le fichier config du répertoire /root/.kube des serveurs maitres. On doit modifier le paramètre server en fonction de l'emplacement réseau. On peut utiliser n'importe quel des noeuds maitre pour se connecter à l'API (qlkub01t ou qlkub02t).
+Il est possible de l'installer sur une autre machine. Pour configurer la connexion et l'authentification du client, on peut récupérer les informations qui sont dans le fichier config du répertoire /root/.kube des serveurs maitres. On doit modifier le paramètre server en fonction de l'emplacement réseau. On peut utiliser n'importe quel des noeuds maitre pour se connecter à l'API (kube01 ou kube03).
 
     apiVersion: v1
     clusters:
     - cluster:
         certificate-authority-data: LS0tLS1...
-        server: https://qlkub01t.laboinspq.qc.ca:6443
+        server: https://kube01.lacave:6443
     name: labo.inspq
     contexts:
     - context:
-        cluster: labo.inspq
+        cluster: cluster.lacave
         user: kubernetes-admin
     name: kubernetes-admin@labo.inspq
     current-context: kubernetes-admin@labo.inspq
@@ -148,7 +148,7 @@ Il est possible de l'installer sur une autre machine. Pour configurer la connexi
 
 Le contexte par défaut est kubernetes-admin@labo.inspq. On peut spécifier le contexte à utiliser pour kubectl de la manière suivante:
 
-    kubectl --context=kubernetes-admin@labo.inspq
+    kubectl --context=kubernetes-admin@cluster.lacave
 
 # Gestion des certificats
 
@@ -178,6 +178,8 @@ Dans le realm master créer le client suivant:
     Root URL: http://localhost:8000
     Client Protocol: openid connect
     Access type: Confidential
+    Ajouter le redirect uri: https://dashboard.kube.lacave
+    Ajouter l'origin: https://dashboard.kube.lacave
     Prendre en note de Client Secret de l'oinglet Credentials.
 
 Ajouter dans l'onglet mappers, cliquer Add builtin, sélectionner groups et cliquer Add selected
@@ -185,6 +187,10 @@ Ajouter dans l'onglet mappers, cliquer Add builtin, sélectionner groups et cliq
 Dans le menu Roles: Créer le rôle cluster-admin
 
 Dans le menu Users: Sélectionner l'utilisateur Admin, dans l'onglet Role Mappings, lui assigner le rôle cluster-admin.
+
+Créer le cluster role binding pour OIDC
+
+    kubectl apply -f resources/keycloak/oidc-cluster-admin-role-binding.yaml
 
 Installer Kubelogin
     curl -LO https://github.com/int128/kubelogin/releases/download/v1.19.0/kubelogin_linux_amd64.zip
@@ -217,6 +223,15 @@ Pour utililiser ce profil:
 
 S'authentifier en tant qu'admin dans Keycloak si vous ne l'êtes pas déjà.
 
+## Dépot Nexus
+Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
+Pour le déployer, utiliser le manifest suivant:
+
+    kubectl apply -f resources/nexus/nexus-deployment.yml
+
+Le serveur nexus est accessible par l'URL https://nexus.lacave
+Le dépôt d'images de conteneurs est docker.lacave
+
 # Authentification au registre Docker du Nexus
 
 Suivre les étapes suivantes pour créer un secret utilisable par Kubernetes pour s'authentifier auprès du registre Docker du serveur Nexus:
@@ -247,14 +262,6 @@ Créer le secret dans Kubernetes:
 
     kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n kube-system
 
-## Dépot Nexus
-Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
-Pour le déployer, utiliser le manifest suivant:
-
-    kubectl apply -f resources/nexus/nexus-deployment.yml
-
-Le serveur nexus est accessible par l'URL https://nexus.lacave
-Le dépôt d'images de conteneurs est docker.lacave
 
 ## Proxy Open ID Connect pour la Dashboard
 On créé un proxy Keycloak qui permet d'accéder au tableau de bord Kubernetes avec une Authentificaiton OpenID Connect.
@@ -267,7 +274,7 @@ La première étape est de créer un image qui accepte les certificats auto-sign
 On peut ensuite déployer le manifest qui crée le proxy:
 
     kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
-    
+
 ## Déploiement d'une première application
 On peut déployer un application en utilisant kubectl. Voici un exemple qui déploie 3 pods ngnix:
 

@@ -22,12 +22,13 @@ spec:
           - --listen=0.0.0.0:3000
           - --discovery-url=https://login.kube.lacave/auth/realms/master
           - --client-id=kubeapi
-          - --client-secret=26399241-bee8-4cd0-a868-6cc6594f1a06
+          - --client-secret=6710ed7f-a75c-4c38-9286-66e97f32e7ee
           - --redirection-url=https://dashboard.kube.lacave
           - --enable-refresh-tokens=true
           - --encryption-key=673ff5f9ea254d0ea89dc3cc0d8ea26a    # 32 bytes string
           - --upstream-url=https://kubernetes-dashboard.kube-system.svc.cluster.lacave
           - --resources=uri=/*
+          - --verbose=true
         ports:
         - containerPort: 3000
         livenessProbe:
