@@ -251,6 +251,23 @@ Créer le secret dans Kubernetes:
 Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
 Pour le déployer, utiliser le manifest suivant:
 
+    kubectl apply -f resources/nexus/nexus-deployment.yml
+
+Le serveur nexus est accessible par l'URL https://nexus.lacave
+Le dépôt d'images de conteneurs est docker.lacave
+
+## Proxy Open ID Connect pour la Dashboard
+On créé un proxy Keycloak qui permet d'accéder au tableau de bord Kubernetes avec une Authentificaiton OpenID Connect.
+
+La première étape est de créer un image qui accepte les certificats auto-signé de notre environnement.
+
+    Se déplacer dans le répertoire resources/keycloak/keycloak-proxy
+    Exécuter le script: build.sh
+
+On peut ensuite déployer le manifest qui crée le proxy:
+
+    kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
+    
 ## Déploiement d'une première application
 On peut déployer un application en utilisant kubectl. Voici un exemple qui déploie 3 pods ngnix:
 
