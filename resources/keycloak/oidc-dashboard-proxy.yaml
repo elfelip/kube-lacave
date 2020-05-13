@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-dashboard-proxy
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubernetes-dashboard-proxy
+  template:
+    metadata:
+      labels:
+        app: kubernetes-dashboard-proxy
+    spec:
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - image: docker.lacave/keycloak-proxy:v2.1.1
+        name: kubernetes-dashboard-proxy
+        args:
+          - --listen=0.0.0.0:3000
+          - --discovery-url=https://login.kube.lacave/auth/realms/master
+          - --client-id=kubeapi
+          - --client-secret=26399241-bee8-4cd0-a868-6cc6594f1a06
+          - --redirection-url=https://dashboard.kube.lacave
+          - --enable-refresh-tokens=true
+          - --encryption-key=673ff5f9ea254d0ea89dc3cc0d8ea26a    # 32 bytes string
+          - --upstream-url=https://kubernetes-dashboard.kube-system.svc.cluster.lacave
+          - --resources=uri=/*
+        ports:
+        - containerPort: 3000
+        livenessProbe:
+          httpGet:
+            path: /oauth/health
+            port: 3000
+          initialDelaySeconds: 3
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /oauth/health
+            port: 3000
+          initialDelaySeconds: 3
+          timeoutSeconds: 2
+        resources:
+          limits:
+            cpu: 100m
+            memory: 256M
+          requests:
+            cpu: 30m
+            memory: 64M
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: dashboard-kube-lacave-tls
+  namespace: kube-system
+spec:
+  secretName: dashboard-kube-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    kind: ClusterIssuer
+  commonName: dashboard.kube.lacave
+  organization:
+  - Lacave CA
+  dnsNames:
+  - dashboard.kube.lacave
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes-dashboard-proxy
+  namespace: kube-system
+spec:
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 3000
+    targetPort: 3000
+  selector:
+    app: kubernetes-dashboard-proxy
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: kubernetes-dashboard-proxy
+  namespace: kube-system
+spec:
+  tls:
+  - hosts:
+    - dashboard.kube.lacave
+    secretName: dashboard-kube-lacave-tls
+  rules:
+  - host: dashboard.kube.lacave
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: kubernetes-dashboard-proxy
+          servicePort: 3000

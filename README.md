@@ -56,17 +56,25 @@ Tester la connexion
     calico-kube-controllers-7758fbf657-6gd9k   1/1       Running   0          13m
     ...
 
+Si kubectl n'a pas été installé, on peut le faire sous Ubuntu avec la commande:
+
+    sudo snap install kubectl
+
+Pour le configurer, récupérer le fichier de configuration .kube/config de un des noeuds du cluster:
+
+    scp -r root@kube01:.kube ~
 
 # Déploiement du Dashboard
 
-Kubespray déploie automatiquement le dashboard Kubernetes. 
-Créer l'utilisateur Admin en utilisant le fichier de déploiement du sous-répertoire resource du projet GIT cluster-kubernetes utilisé pour le déploiement.
+Kubespray déploie automatiquement le dashboard Kubernetes.
+
+On doit toutefois créer l'utilisateur Admin en utilisant le manifeste du sous-répertoire resources du projet.
 
     kubectl apply -f resources/dashboard-adminuser.yml
 
 Si la configuration par défaut du dashboard de kubespray ne suffit pas, suivre les étapes suivantes pour le faire. Dans ce cas, le manifest pour la création de l'administrateur doit être modifier pour utiliser le namespace kubernetes-dashboard au lieu de kube-system.
 
-Se connecter sur le premier noeud master, qlkub01t, en tant que root ou sur le serveur Jenkins en tant que jenkins.
+Se connecter sur le premier noeud master, kube01t, en tant que root ou sur le serveur Jenkins/Ansible.
 
 Déployer la dernière version du dashboard
 
@@ -112,10 +120,6 @@ On peut accéder à la console par l'adresse suivante:
     Par un port-forward:
     kubectl port-forward service/kubernetes-dashboard -n kube-system 8443:443
     URL: https://localhost:8443
-
-    En LABO:
-    https://kube01.lacave:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#!/login
-    Utiliser le token de l'étape précédente
 
 ## Kubectl
 L'outil kubectl est installé et configuré automatiquement sur les deux noeuds maitres du cluster Kubernetes: qlkub01t et qlkub02t pour l'utilisateur root.
@@ -212,6 +216,40 @@ Pour utililiser ce profil:
     kubectl --context oidc@kube.lacave get nodes
 
 S'authentifier en tant qu'admin dans Keycloak si vous ne l'êtes pas déjà.
+
+# Authentification au registre Docker du Nexus
+
+Suivre les étapes suivantes pour créer un secret utilisable par Kubernetes pour s'authentifier auprès du registre Docker du serveur Nexus:
+Référence: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+
+S'authentifier au registre Docker du Nexus si ce n'est pas déjà fait:
+
+    docker login nexus3.inspq.qc.ca:5000
+
+Vérifier que le ficher de config Docker pour identifier les informations d'authentification:
+
+    cat ~/.docker/config.json 
+{
+	"auths": {
+		"docker.lacave": {
+			"auth": "LeSecretEstDansLaSauce"
+		},
+		"nexus3.inspq.qc.ca:5000": {
+			"auth": "LeSecretEstDansLaSauce"
+		},
+		"https://index.docker.io/v1/": {
+			"auth": "LeSecretEstDansLaSauce"
+		}
+	}
+}
+
+Créer le secret dans Kubernetes:
+
+    kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n kube-system
+
+## Dépot Nexus
+Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
+Pour le déployer, utiliser le manifest suivant:
 
 ## Déploiement d'une première application
 On peut déployer un application en utilisant kubectl. Voici un exemple qui déploie 3 pods ngnix:
@@ -339,35 +377,6 @@ Pour supprimer le déploiement
     Le services peuvent ensuite être publié en créant une entré de type cname. Pour l'application exemple, kubenginx on créé l'entré DNS suivante dans la zone laboinspq.qc.ca:
     kubenginx.laboinspq.qc.ca CNAME kubecluster.laboinspq.qc.ca
 
-# Authentification au registre Docker du Nexus
-
-Suivre les étapes suivantes pour créer un secret utilisable par Kubernetes pour s'authentifier auprès du registre Docker du serveur Nexus:
-Référence: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-
-S'authentifier au registre Docker du Nexus si ce n'est pas déjà fait:
-
-    docker login nexus3.inspq.qc.ca:5000
-
-Vérifier que le ficher de config Docker pour identifier les informations d'authentification:
-
-    cat ~/.docker/config.json 
-{
-	"auths": {
-		"https://nexus3.inspq.qc.ca:5000": {
-			"auth": "LeSecretEstDansLaSauce"
-		},
-		"nexus3.inspq.qc.ca:5000": {
-			"auth": "LeSecretEstDansLaSauce"
-		},
-		"nexus3.laboinspq.qc.ca:5000": {
-			"auth": "LeSecretEstDansLaSauce"
-		}
-	}
-}
-
-Créer le secret dans Kubernetes:
-
-    kubectl create secret generic regcred --from-file=.dockerconfigjson=/var/lib/jenkins/.docker/config.json --type=kubernetes.io/dockerconfigjson
 
 # Monitoring
 

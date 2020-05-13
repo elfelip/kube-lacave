@@ -2,15 +2,48 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: inspq
-    labels:
-        istio-injection: enabled
-    
+    name: nexus
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: docker-lacave-tls
+  namespace: nexus
+spec:
+  secretName: docker-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+  commonName: docker.lacave
+  organization:
+  - Lacave CA
+  dnsNames:
+  - docker.lacave
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: nexus-lacave-tls
+  namespace: nexus
+spec:
+  secretName: nexus-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+  commonName: nexus.lacave
+  organization:
+  - Lacave CA
+  dnsNames:
+  - nexus.lacave    
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-    namespace: inspq
+    namespace: nexus
     name: nexus-deployment
     labels:
         app: nexus
@@ -46,7 +79,7 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
     name: nexus3-claim
-    namespace: inspq
+    namespace: nexus
     labels:
         app: nexus
 spec:
@@ -60,7 +93,7 @@ spec:
     apiVersion: v1
     kind: Service
     metadata:
-        namespace: inspq
+        namespace: nexus
         name: nexus-service
     spec:
         selector:
@@ -78,12 +111,12 @@ spec:
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
-    namespace: inspq
+    namespace: nexus
     name: ingress-nexus
     annotations:
       kubernetes.io/ingress.class: "nginx"
       nginx.ingress.kubernetes.io/proxy-body-size: 2000m
-      cert-manager.io/issuer: ca-lacave-issuer
+      cert-manager.io/cluster-issuer: ca-lacave-issuer
 spec:
   tls:
   - hosts:
@@ -101,12 +134,12 @@ spec:
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
-  namespace: inspq
+  namespace: nexus
   name: ingress-docker-nexus
   annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/proxy-body-size: 2000m
-    cert-manager.io/issuer: ca-lacave-issuer
+    cert-manager.io/cluster-issuer: ca-lacave-issuer
 spec:
   tls:
   - hosts:
