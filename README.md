@@ -1,5 +1,5 @@
-# Projet cluster Kubernetes INSPQ
-Ce projet permet de créer un cluster Kubernetes sur CoreOS
+# Projet cluster Kubernetes
+Ce projet permet de créer un cluster Kubernetes sur CoreOS/Flatcar
 
 # Création des noeuds
 Les étapes suivantes doivent être exécuté à partir du serveur Ansible principal.
@@ -10,26 +10,40 @@ Faire le checkout du projet et des sous-projets dans un rpertoire de travail:
 
     git clone --recursive https://github.com/elfelip/kube-lacave.git
 
+Dans ce projet on utilise 3 noeuds:
+    kube01.lacave: premier master
+    kube02.lacave: noeud d'exécution d'application
+    kube03.lacave: deuxième master
+
+Actuellement, l'authentification OpenID Connect est ajouté dans la configuration du cluster.
+Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave-root.pem dans les répertopires /etc/kubernetes/ssl de chacun des noeuds du cluster.
+
+    ssh root@kube01 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube01:/etc/kubernetes/ssl
+    ssh root@kube02 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube02:/etc/kubernetes/ssl
+    ssh root@kube03 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube03:/etc/kubernetes/ssl
 
 S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de déploiement du cluster:
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
-# Exécution du playbook de déploiement
-
-On peut exécuter automatiquement les étapes décrite dans le document en exécutant la commande suivante:
-
-    ansible-playbook -c local -i 'localhost,' deploy.yml
-    
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
 
 	sudo apt install python3-kubernetes
 	pip3 install openshift --user
 
+# Exécution du playbook de déploiement
+A venir
+On peut exécuter automatiquement les étapes décrite dans le document en exécutant la commande suivante:
+
+    ansible-playbook -c local -i 'localhost,' deploy.yml
+    
 
 # Installer et clonfigurer kubectl sur le serveur Ansible/Jenkins
-Pour faciliter les opérations, on peut installer et configurer kubectl sur le serveur Jenkins en effectualnt les étapes suivantes:
+Pour faciliter les opérations, on installe et configure kubectl sur le serveur Jenkins/Ansible en effectuant les étapes suivantes:
 
 Installer kubectl
 
@@ -45,21 +59,18 @@ Tester la connexion
 
 # Déploiement du Dashboard
 
-Pour le moment, la configuration du Kubespray ne déploie pas le dashboard Kubernetes. Suivre les étapes suivantes pour le faire.
+Kubespray déploie automatiquement le dashboard Kubernetes. 
+Créer l'utilisateur Admin en utilisant le fichier de déploiement du sous-répertoire resource du projet GIT cluster-kubernetes utilisé pour le déploiement.
+
+    kubectl apply -f resources/dashboard-adminuser.yml
+
+Si la configuration par défaut du dashboard de kubespray ne suffit pas, suivre les étapes suivantes pour le faire. Dans ce cas, le manifest pour la création de l'administrateur doit être modifier pour utiliser le namespace kubernetes-dashboard au lieu de kube-system.
 
 Se connecter sur le premier noeud master, qlkub01t, en tant que root ou sur le serveur Jenkins en tant que jenkins.
 
 Déployer la dernière version du dashboard
 
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-rc1/aio/deploy/recommended.yaml
-
-Créer l'utilisateur Admin en utilisant le fichier de déploiement du sous-répertoire resource du projet GIT cluster-kubernetes utilisé pour le déploiement.
-
-    kubectl apply -f resources/dashboard-adminuser.yml
-
-Lui donner le rôle cluster-admin
-
-    kubectl apply -f resources/admin-role-binding.yml
 
 
 On peut alors accéder à la console en suivante les étapes de la section Utilisation.
@@ -72,7 +83,7 @@ Si on doit supprimer le dashboard, utiliser la commande suivante:
 ## Accéder à la console
 Pour obtenir le jeton d'authentification, lancer les commandes suivantes à partir du premier noeud master du cluster en tant que root:
 
-    kubectl get secret -n kubernetes-dashboard
+    kubectl get secret -n kube-system
     NAME                               TYPE                                  DATA   AGE
     admin-user-token-f85z5             kubernetes.io/service-account-token   3      63s
     default-token-ndnxp                kubernetes.io/service-account-token   3      74s
@@ -98,6 +109,9 @@ Pour obtenir le jeton d'authentification, lancer les commandes suivantes à part
 
 
 On peut accéder à la console par l'adresse suivante:
+    Par un port-forward:
+    kubectl port-forward service/kubernetes-dashboard -n kube-system 8443:443
+    URL: https://localhost:8443
 
     En LABO:
     https://kube01.lacave:6443/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#!/login
@@ -131,6 +145,73 @@ Il est possible de l'installer sur une autre machine. Pour configurer la connexi
 Le contexte par défaut est kubernetes-admin@labo.inspq. On peut spécifier le contexte à utiliser pour kubectl de la manière suivante:
 
     kubectl --context=kubernetes-admin@labo.inspq
+
+# Gestion des certificats
+
+## Installation cert-manager
+Cert Manager peut être installé par kubespray mais la version déployé semble limité.
+On peut en installer un version plus récente avec la commande suivante:
+    kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.15.0/cert-manager.yaml
+
+## Création de l'émetteur de certificat SelfSigned pour lacave
+Cert-manager peut créer des certificats en utilisant une autoirité de certification selfsigned. Pour créer cet émetteur au niveau du cluster, exécuter le manifest suivant:
+
+    kubectl create -f resources/cert/root-ca-cert-manager.yml
+
+## Configuration OpenID Connect
+
+Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
+Lancer le manifest suivant pour créer le serveur Keycloak.
+
+    kubectl create -f resources/keycloak/keycloak-deployment.yaml
+
+S'assurer que le DNS contient une entrée login.kube.lacave qui pointe vers les adresses IP des noeuds du cluster.
+
+Accéder ensuite au serveur Keycloak: https://login.kube.lacave/auth/
+S'authentifier en tant que l'utilisateur admin/admin
+Dans le realm master créer le client suivant:
+    Client ID: kubeapi
+    Root URL: http://localhost:8000
+    Client Protocol: openid connect
+    Access type: Confidential
+    Prendre en note de Client Secret de l'oinglet Credentials.
+
+Ajouter dans l'onglet mappers, cliquer Add builtin, sélectionner groups et cliquer Add selected
+
+Dans le menu Roles: Créer le rôle cluster-admin
+
+Dans le menu Users: Sélectionner l'utilisateur Admin, dans l'onglet Role Mappings, lui assigner le rôle cluster-admin.
+
+Installer Kubelogin
+    curl -LO https://github.com/int128/kubelogin/releases/download/v1.19.0/kubelogin_linux_amd64.zip
+    unzip kubelogin_linux_amd64.zip
+    chmod a+x kubelogin
+    cp kubelogin ~/bin
+
+Ajouter ensuite la section suivante dans votre ficher .kube/config:
+
+    apiVersion: v1
+    - context:
+        cluster: kube.lacave
+        user: oidc
+      name: oidc@kube.lacave
+    users
+    - name: oidc
+        user:
+            exec:
+            apiVersion: client.authentication.k8s.io/v1beta1
+            command: kubelogin
+            args:
+            - get-token
+            - --oidc-issuer-url=https://login.kube.lacave/auth/realms/master
+            - --oidc-client-id=kubeapi
+            - --oidc-client-secret=client-secret-de-kube-api
+
+Pour utililiser ce profil:
+
+    kubectl --context oidc@kube.lacave get nodes
+
+S'authentifier en tant qu'admin dans Keycloak si vous ne l'êtes pas déjà.
 
 ## Déploiement d'une première application
 On peut déployer un application en utilisant kubectl. Voici un exemple qui déploie 3 pods ngnix:
@@ -376,10 +457,6 @@ Calico (réseau):
     calicoctl get nodes -o yaml
  
  
-# Installation cert-manager
-Cert Manager peut être installé par kubespray mais la version déployé semble limité.
-On peut en installer un version plus récente avec la commande suivante:
-    kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.2/cert-manager.yaml
 
 # Monitoring
 On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
