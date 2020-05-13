@@ -1,0 +1,38 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: dashboard-kube-lacave-tls
+  namespace: kube-system
+spec:
+  secretName: dashboard-kube-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    kind: ClusterIssuer
+  commonName: dashboard.kube.lacave
+  organization:
+  - Lacave CA
+  dnsNames:
+  - dashboard.kube.lacave
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  namespace: kube-system
+  name: ingress-dashboard
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: ca-lacave-issuer
+spec:
+  tls:
+  - hosts:
+    - dashboard.kube.lacave
+    secretName: login-kube-lacave-tls
+  rules:
+  - host: dashboard.kube.lacave
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: kubernetes-dashboard
+          servicePort: 443
