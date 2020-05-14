@@ -264,6 +264,7 @@ Créer le secret dans Kubernetes:
 
 
 ## Proxy Open ID Connect pour la Dashboard
+Cette section n'est pas fonctionelle pour le moment.
 On créé un proxy Keycloak qui permet d'accéder au tableau de bord Kubernetes avec une Authentificaiton OpenID Connect.
 
 La première étape est de créer un image qui accepte les certificats auto-signé de notre environnement.
@@ -274,6 +275,22 @@ La première étape est de créer un image qui accepte les certificats auto-sign
 On peut ensuite déployer le manifest qui crée le proxy:
 
     kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
+
+## Configuration des rôles pour une archnitecture mutualisé
+Un cluster mutualisé (multi-tenant) permet le partage des ressources entre plusieurs équipes.
+Le principes est que chaque équipe a un namespace. Il y a 3 types d'utilisateur pour un namespace:
+    Administrateur du namespace (admin): Cet utilisateur peut effectuer toute les opérations tant qu'elle sont à l'intérieur de son namespace.
+    Accès en modification (edit): Cet utilisateur peut créer, modifier et supprimer certains type d'objet dans un namespace comme des pods, des déploiement, des stateful set, des certificats etc. C'est habituellement le rôle qu'on donne au développeur.
+    Accès en lecture (view): Ce rôle permet de voir les objets du namespace. Ca peut être utile pour du monitoring au donner des accès a un personne externe à l'équipe.
+
+Dans notre exemple, on configure les rôles pour le namespace default.
+La première étape est de se connecter au serveur Keycloak et de créer les rôles de realm suivants:
+    default-namespace-admin: Administrateurs du namespace default
+    default-namespace-edit: Développeur du namespace default
+    default-namespace-view: Consulter les objets du namespace default
+
+On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace default en exécutant le manifest suivant:
+    kubectl apply -f resources/multitenants-default-role-bindings.yaml
 
 ## Déploiement d'une première application
 On peut déployer un application en utilisant kubectl. Voici un exemple qui déploie 3 pods ngnix:
