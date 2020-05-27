@@ -173,6 +173,8 @@ S'assurer que le DNS contient une entrée login.kube.lacave qui pointe vers les 
 
 Accéder ensuite au serveur Keycloak: https://login.kube.lacave/auth/
 S'authentifier en tant que l'utilisateur admin/admin
+
+### Création du client
 Dans le realm master créer le client suivant:
     Client ID: kubeapi
     Root URL: http://localhost:8000
@@ -183,20 +185,52 @@ Dans le realm master créer le client suivant:
     Prendre en note de Client Secret de l'oinglet Credentials.
 
 Ajouter dans l'onglet mappers, cliquer Add builtin, sélectionner groups et cliquer Add selected
+Dans l'onglet Roles, Ajouter le rôle kubernetes-user
 
-Dans le menu Roles: Créer le rôle cluster-admin
+### Création du scope de client
+Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit créer le client scope suivant:
+
+    Dans le menu Client Scope cliquer sur le bouton Create.
+    Entrer les informations suivantes et cliquer Save:
+        Name: kube-api-audience
+        Description: Scope pour Kubernetes
+        Protocol: openid-connect
+        Display On Consent Screen: On
+        Include in Token Scope: On
+    Aller ensuite dans l'onglet Mappers:
+    Cliquer sur Create
+    Entrer les informations suivantes et cliquer Save:
+        Name: kube-api-audience
+        Mapper Type: Audience
+        Included Client Audience: kubeapi
+        Add to ID token: On
+        Add to access token: On
+
+    Dans le menu Client
+    Sélectionner le client kubeapi
+    Dans l'onglet Client Scope
+    Ajouter le scope kube-api-audience dans Assigned Default Client Scopes
+
+
+
+### Création du rôle de REALM pour les administrateurs du cluster
+
+Dans le menu Roles: Créer le rôle cluster-admin et cliquer Save
 
 Dans le menu Users: Sélectionner l'utilisateur Admin, dans l'onglet Role Mappings, lui assigner le rôle cluster-admin.
 
+### Créer l'association du rôle OIDC de cluster admin dans Kubernetes
 Créer le cluster role binding pour OIDC
 
     kubectl apply -f resources/keycloak/oidc-cluster-admin-role-binding.yaml
 
-Installer Kubelogin
+### Configuration du cluent Kubectl pour OpenID Connect
+Installer Kubelogin (dans ~/bin pour un utilisateur norma, dans /usr/local/bin pour une installation globale)
+    cd ~/bin # ou cd /usr/local/bin
     curl -LO https://github.com/int128/kubelogin/releases/download/v1.19.0/kubelogin_linux_amd64.zip
     unzip kubelogin_linux_amd64.zip
     chmod a+x kubelogin
-    cp kubelogin ~/bin
+    ln -s kubelogin kubectl-oidc_login
 
 Ajouter ensuite la section suivante dans votre ficher .kube/config:
 
@@ -210,8 +244,9 @@ Ajouter ensuite la section suivante dans votre ficher .kube/config:
         user:
             exec:
             apiVersion: client.authentication.k8s.io/v1beta1
-            command: kubelogin
+            command: kubectl
             args:
+            - oidc-login
             - get-token
             - --oidc-issuer-url=https://login.kube.lacave/auth/realms/master
             - --oidc-client-id=kubeapi
@@ -261,10 +296,10 @@ Vérifier que le ficher de config Docker pour identifier les informations d'auth
 Créer le secret dans Kubernetes:
 
     kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n kube-system
-
+Ce secret doit être créé dans chacun des Namespace qui utilise le registre privé.
 
 ## Proxy Open ID Connect pour la Dashboard
-Cette section n'est pas fonctionelle pour le moment.
+
 On créé un proxy Keycloak qui permet d'accéder au tableau de bord Kubernetes avec une Authentificaiton OpenID Connect.
 
 La première étape est de créer un image qui accepte les certificats auto-signé de notre environnement.
@@ -276,7 +311,7 @@ On peut ensuite déployer le manifest qui crée le proxy:
 
     kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
 
-## Configuration des rôles pour une archnitecture mutualisé
+## Configuration des rôles pour une architecture mutualisée
 Un cluster mutualisé (multi-tenant) permet le partage des ressources entre plusieurs équipes.
 Le principes est que chaque équipe a un namespace. Il y a 3 types d'utilisateur pour un namespace:
     Administrateur du namespace (admin): Cet utilisateur peut effectuer toute les opérations tant qu'elle sont à l'intérieur de son namespace.

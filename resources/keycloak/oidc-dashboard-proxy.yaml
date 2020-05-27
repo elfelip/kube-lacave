@@ -16,7 +16,7 @@ spec:
       imagePullSecrets:
       - name: regcred
       containers:
-      - image: docker.lacave/keycloak-proxy:v2.1.1
+      - image: docker.lacave/keycloak-gatekeeper:latest
         name: kubernetes-dashboard-proxy
         args:
           - --listen=0.0.0.0:3000
@@ -27,6 +27,8 @@ spec:
           - --enable-refresh-tokens=true
           - --encryption-key=673ff5f9ea254d0ea89dc3cc0d8ea26a    # 32 bytes string
           - --upstream-url=https://kubernetes-dashboard.kube-system.svc.cluster.lacave
+          - --skip-upstream-tls-verify=true
+          - --skip-openid-provider-tls-verify=true
           - --resources=uri=/*
           - --verbose=true
         ports:
@@ -81,11 +83,14 @@ spec:
   selector:
     app: kubernetes-dashboard-proxy
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: kubernetes-dashboard-proxy
   namespace: kube-system
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: ca-lacave-issuer
 spec:
   tls:
   - hosts:
