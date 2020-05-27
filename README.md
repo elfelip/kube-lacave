@@ -29,6 +29,17 @@ S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de dépl
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
+# Configuration DNS
+
+    On créé un l'entre DNS kube.lacave pour les 3 adresses IP des noeuds du cluster.
+    kube.lacave.    IN  A   192.168.1.21
+                    IN  A   192.168.1.22
+                    IN  A   192.168.1.23
+
+    Le services peuvent ensuite être publié en créant une entré de type cname. Pour l'application exemple, kubenginx on créé l'entré DNS suivante dans la zone lacave:
+    login.kube.lacave       CNAME   kube.lacave.
+    dashboard.kube.lacave   CNAME   kube.lacave.
+
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
 
@@ -311,6 +322,10 @@ On peut ensuite déployer le manifest qui crée le proxy:
 
     kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
 
+S'assurer que l'entré DNS dashboard.kube.lacave existe dans le DNS et pointe vers les adresses des noeuds du Cluster.
+On peut accéder au Dashboard par l'adresse https://dashboard.kube.lacave
+S'authentifier en tant qu'admin dans Keycloak.
+
 ## Configuration des rôles pour une architecture mutualisée
 Un cluster mutualisé (multi-tenant) permet le partage des ressources entre plusieurs équipes.
 Le principes est que chaque équipe a un namespace. Il y a 3 types d'utilisateur pour un namespace:
@@ -327,131 +342,6 @@ La première étape est de se connecter au serveur Keycloak et de créer les rô
 On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace default en exécutant le manifest suivant:
     kubectl apply -f resources/multitenants-default-role-bindings.yaml
 
-## Déploiement d'une première application
-On peut déployer un application en utilisant kubectl. Voici un exemple qui déploie 3 pods ngnix:
-
-Déployer les pods
-
-    kubectl apply -f resources/nginx-deployment.yaml
-
-Voir les pods:
-
-    kubectl get pods
-    NAME                                READY   STATUS    RESTARTS   AGE
-    nginx-deployment-54f57cf6bf-2p985   1/1     Running   0          54s
-    nginx-deployment-54f57cf6bf-h95gn   1/1     Running   0          54s
-    nginx-deployment-54f57cf6bf-v5fp2   1/1     Running   0          54s
-
-Voir le déploiement:
-
-    kubectl describe deployments
-    Name:                   nginx-deployment
-    Namespace:              default
-    CreationTimestamp:      Tue, 31 Dec 2019 10:14:45 -0500
-    Labels:                 app=nginx
-    Annotations:            deployment.kubernetes.io/revision: 1
-                            kubectl.kubernetes.io/last-applied-configuration:
-                            {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"nginx"},"name":"nginx-deployment","namespace":"d...
-    Selector:               app=nginx
-    Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
-    StrategyType:           RollingUpdate
-    MinReadySeconds:        0
-    RollingUpdateStrategy:  25% max unavailable, 25% max surge
-    Pod Template:
-    Labels:  app=nginx
-    Containers:
-    nginx:
-        Image:        nginx:1.7.9
-        Port:         80/TCP
-        Host Port:    0/TCP
-        Environment:  <none>
-        Mounts:       <none>
-    Volumes:        <none>
-    Conditions:
-    Type           Status  Reason
-    ----           ------  ------
-    Available      True    MinimumReplicasAvailable
-    Progressing    True    NewReplicaSetAvailable
-    OldReplicaSets:  <none>
-    NewReplicaSet:   nginx-deployment-54f57cf6bf (3/3 replicas created)
-    Events:
-    Type    Reason             Age    From                   Message
-    ----    ------             ----   ----                   -------
-    Normal  ScalingReplicaSet  2m14s  deployment-controller  Scaled up replica set nginx-deployment-54f57cf6bf to 3
-
-Augmenter le nombre de pods
-
-    kubectl scale deployment.v1.apps/nginx-deployment --replicas=10
-    deployment.apps/nginx-deployment scaled
-
-Voir le service:
-
-    kubectl describe services ngnix-service
-    Name:              ngnix-service
-    Namespace:         default
-    Labels:            <none>
-    Annotations:       kubectl.kubernetes.io/last-applied-configuration:
-                        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"ngnix-service","namespace":"default"},"spec":{"ports":[{"port":93...
-    Selector:          app=nginx
-    Type:              ClusterIP
-    IP:                10.233.61.224
-    Port:              <unset>  9376/TCP
-    TargetPort:        80/TCP
-    Endpoints:         10.233.105.7:80,10.233.127.6:80,10.233.86.9:80
-    Session Affinity:  None
-    Events:            <none>
-    
-Accéder à l'application
-
-    [ansible@qlkub01t resources]$ curl http://10.233.61.224:9376
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>
-<style>
-    body {
-        width: 35em;
-        margin: 0 auto;
-        font-family: Tahoma, Verdana, Arial, sans-serif;
-    }
-</style>
-</head>
-<body>
-<h1>Welcome to nginx!</h1>
-<p>If you see this page, the nginx web server is successfully installed and
-working. Further configuration is required.</p>
-
-<p>For online documentation and support please refer to
-<a href="http://nginx.org/">nginx.org</a>.<br/>
-Commercial support is available at
-<a href="http://nginx.com/">nginx.com</a>.</p>
-
-<p><em>Thank you for using nginx.</em></p>
-</body>
-</html>
-
-Le déploiment inclus aussi une configuration Ingress permettant d'y accéder de l'extérieur du cluster:
-
-    curl -H "Host: kubenginx.laboinspq.qc.ca" http://qlkub01t.laboinspq.qc.ca
-    curl -H "Host: kubenginx.laboinspq.qc.ca" http://qlkub02t.laboinspq.qc.ca
-    curl -H "Host: kubenginx.laboinspq.qc.ca" http://qlkub03t.laboinspq.qc.ca
-    curl -H "Host: kubenginx.laboinspq.qc.ca" http://qlkub04t.laboinspq.qc.ca
-
-Si l'entré a été ajouté au DNS, on peut aussi y accéder par l'URL http://kubenginx.laboinspq.qc.ca
-
-Pour supprimer le déploiement
-
-    kubectl delete -f nginx-deployment.yaml
-    deployment.apps "nginx-deployment" deleted
-    service "ngnix-service" deleted
-    ingress.networking.k8s.io "ingress-nginx" deleted
-
-# Configuration DNS
-
-    On créé un l'entre DNS kubecluster.laboinspq.qc.ca pour les 4 adresses IP des noeuds du cluster.
-
-    Le services peuvent ensuite être publié en créant une entré de type cname. Pour l'application exemple, kubenginx on créé l'entré DNS suivante dans la zone laboinspq.qc.ca:
-    kubenginx.laboinspq.qc.ca CNAME kubecluster.laboinspq.qc.ca
 
 
 # Monitoring
