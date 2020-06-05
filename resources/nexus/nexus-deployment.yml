@@ -21,6 +21,7 @@ spec:
   - Lacave CA
   dnsNames:
   - docker.lacave
+  - docker.lacave.info
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
@@ -39,6 +40,7 @@ spec:
   - Lacave CA
   dnsNames:
   - nexus.lacave    
+  - nexus.lacave.info    
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -130,6 +132,13 @@ spec:
         backend:
           serviceName: nexus-service
           servicePort: 8081
+  - host: nexus.lacave.info
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nexus-service
+          servicePort: 8081
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
@@ -147,6 +156,13 @@ spec:
     secretName: docker-lacave-tls
   rules:
   - host: docker.lacave
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nexus-service
+          servicePort: 5000
+  - host: docker.lacave.info
     http:
       paths:
       - path: /

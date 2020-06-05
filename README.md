@@ -1,6 +1,96 @@
 # Projet cluster Kubernetes
 Ce projet permet de créer un cluster Kubernetes sur CoreOS/Flatcar
 
+# Préparation du serveur de provisionning
+On fait l'installation du cluster à partir d'un ordinateur externe. J'ai utilise une machine Ubuntu pour le faire.
+On choisi un utilisateur de l'OS qui servira à faire les installation. Ca peut être un ustilisateur normal, l'utilisateur Jenkins si Jenkins est utilisé pour lancer les scripts de déploiement ou un utilisateur Ansible.
+
+On dit premièrement générer les clés RSA avec ssh:
+    ssh-keygen
+
+    Ne pas entrer de passphrase
+
+La deuxième étape est d'installer Ansible: https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html
+    sudo apt update
+    sudo apt install software-properties-common
+    sudo apt-add-repository --yes --update ppa:ansible/ansible
+    sudo apt install ansible
+
+# Configuration DNS
+
+Dans notre installation, Un serveur DNS bind est installé sur le serveur de povisionning.
+Le fichier de zone pour lacave est /etc/bind/lacave.db
+
+    On créé des entres DNS pour les 3 noeuds ainsi que l'entré kube.lacave pour les 3 adresses IP des noeuds du cluster.
+    kube01.lacave   IN  A   192.168.1.21
+    kube02.lacave   IN  A   192.168.1.22
+    kube03.lacave   IN  A   192.168.1.23
+    kube.lacave.    IN  A   192.168.1.21
+                    IN  A   192.168.1.22
+                    IN  A   192.168.1.23
+
+    Le services peuvent ensuite être publié en créant une entré de type cname. Pour l'application exemple, kubenginx on créé l'entré DNS suivante dans la zone lacave:
+    login.kube.lacave       CNAME   kube.lacave.
+    dashboard.kube.lacave   CNAME   kube.lacave.
+
+# Création du PKI
+Afin de faciliter le création de certificats self-signed, on se cré un petite infrastructure à clé publique sur le serveur de provisionning.
+Référence: https://pki-tutorial.readthedocs.io/en/latest/simple/index.html
+La chaine de confiance ainsi que les clés de ce PKI sont incluse dans le projet GIT.
+
+# Préparation des noeuds
+La première étape est d'installer un système d'exploitation sur les noeuds physiques ou virtuel.
+Pour ce projet on a choisi Flatcar Container Linux qui est un fork de CoreOS suite à son achat par RedHat. On aurait aussi pu le faire avec Fedora CoreOS mais avec leur abandon de Docker, ca redait le passage de CoreOS vers Fedora un peu plus complexe.
+
+J'utilise le CD d'installation de Flatcar pour provisionner manuellement les noeuds.
+La première étape est de graver sur un CD/DVD ou une clé USB l'ISO de Flatcat https://docs.flatcar-linux.org/os/booting-with-iso/
+
+La deuxième étape est de créer les fichiers d'intialisation pour les 4 noeuds. On créé ces fichiers sur le serveur de provisionning.
+Voici la strcture du fichier. 
+    kubeXX-ignition.json
+    {
+    "ignition": {
+        "version": "2.2.0"
+    },
+    "passwd": {
+        "users": [
+        {
+            "name": "root",
+            "sshAuthorizedKeys": [
+            "Copier Le contenue du fichier .ssh/id_rsa.pub de l'utilisateur principal du serveur de provisioning"
+            ]
+        }
+        ]
+    },
+    "networkd": {
+        "units": [
+        {
+            "contents": "[Match]\nName=enp3s0\n\n[Network]\nAddress=192.168.1.XX/24\nGateway=192.168.1.1\nDNS=192.168.1.10",
+            "name": "00-enp3s0.network"
+        }
+        ]
+    },
+    "storage": {
+        "files": [{
+        "filesystem": "root",
+        "path": "/etc/hostname",
+        "mode": 420,
+        "contents": { "source": "data:,kubeXX" }
+        }]
+    },
+    "systemd": {}
+    }
+
+Faire un fichier par noeud (kube01, kube02 et kube03)
+Sur chacun des noeuds:
+    Démarrer le serveur en utilisant le CD/DVD ou la clé USB
+    Télécharger le ficher d'initilisation du serveur en utiliant scp. Ex:
+        scp utilisateurprincipal@serveur.provisioning:kubeXX-ignition.json .
+    Lancer l'intialisation du serveur
+        sudo flatcar-install -d /dev/sda -i kubeXX-ignition.json
+    Enlver le CD/DVD ou la clé USB et redémarrer le serveur.
+    Le redémarrer une seconde fois s'il n'a pas la bonne adresse IP.
+
 # Création des noeuds
 Les étapes suivantes doivent être exécuté à partir du serveur Ansible principal.
 
@@ -15,6 +105,16 @@ Dans ce projet on utilise 3 noeuds:
     kube02.lacave: noeud d'exécution d'application
     kube03.lacave: deuxième master
 
+## Ajout du certifact de du root CA dans les trust stores des noeuds
+Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire les opérations suivantes sur tous les noeuds:
+
+    scp resources/cert/lacave-root.pem root@kube01:/etc/ssl/certs
+    ssh root@kube01 update-ca-certificates
+    scp resources/cert/lacave-root.pem root@kube02:/etc/ssl/certs
+    ssh root@kube02 update-ca-certificates
+    scp resources/cert/lacave-root.pem root@kube03:/etc/ssl/certs
+    ssh root@kube03 update-ca-certificates
+
 Actuellement, l'authentification OpenID Connect est ajouté dans la configuration du cluster.
 Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave-root.pem dans les répertopires /etc/kubernetes/ssl de chacun des noeuds du cluster.
 
@@ -25,20 +125,12 @@ Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave
     ssh root@kube03 mkdir -p /etc/kubernetes/ssl
     scp resources/cert/lacave-root.pem root@kube03:/etc/kubernetes/ssl
 
+# Installation du Cluster
+
 S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de déploiement du cluster:
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
-# Configuration DNS
-
-    On créé un l'entre DNS kube.lacave pour les 3 adresses IP des noeuds du cluster.
-    kube.lacave.    IN  A   192.168.1.21
-                    IN  A   192.168.1.22
-                    IN  A   192.168.1.23
-
-    Le services peuvent ensuite être publié en créant une entré de type cname. Pour l'application exemple, kubenginx on créé l'entré DNS suivante dans la zone lacave:
-    login.kube.lacave       CNAME   kube.lacave.
-    dashboard.kube.lacave   CNAME   kube.lacave.
 
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
@@ -53,7 +145,7 @@ On peut exécuter automatiquement les étapes décrite dans le document en exéc
     ansible-playbook -c local -i 'localhost,' deploy.yml
     
 
-# Installer et clonfigurer kubectl sur le serveur Ansible/Jenkins
+# Installer et configurer kubectl sur le serveur de provisionning ou de gestion
 Pour faciliter les opérations, on installe et configure kubectl sur le serveur Jenkins/Ansible en effectuant les étapes suivantes:
 
 Installer kubectl
@@ -173,7 +265,7 @@ Cert-manager peut créer des certificats en utilisant une autoirité de certific
 
     kubectl create -f resources/cert/root-ca-cert-manager.yml
 
-## Configuration OpenID Connect
+# Configuration OpenID Connect
 
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
 Lancer le manifest suivant pour créer le serveur Keycloak.
@@ -185,7 +277,7 @@ S'assurer que le DNS contient une entrée login.kube.lacave qui pointe vers les 
 Accéder ensuite au serveur Keycloak: https://login.kube.lacave/auth/
 S'authentifier en tant que l'utilisateur admin/admin
 
-### Création du client
+## Création du client
 Dans le realm master créer le client suivant:
     Client ID: kubeapi
     Root URL: http://localhost:8000
@@ -198,7 +290,7 @@ Dans le realm master créer le client suivant:
 Ajouter dans l'onglet mappers, cliquer Add builtin, sélectionner groups et cliquer Add selected
 Dans l'onglet Roles, Ajouter le rôle kubernetes-user
 
-### Création du scope de client
+## Création du scope de client
 Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit créer le client scope suivant:
 
     Dans le menu Client Scope cliquer sur le bouton Create.
@@ -224,18 +316,18 @@ Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit
 
 
 
-### Création du rôle de REALM pour les administrateurs du cluster
+## Création du rôle de REALM pour les administrateurs du cluster
 
 Dans le menu Roles: Créer le rôle cluster-admin et cliquer Save
 
 Dans le menu Users: Sélectionner l'utilisateur Admin, dans l'onglet Role Mappings, lui assigner le rôle cluster-admin.
 
-### Créer l'association du rôle OIDC de cluster admin dans Kubernetes
+## Créer l'association du rôle OIDC de cluster admin dans Kubernetes
 Créer le cluster role binding pour OIDC
 
     kubectl apply -f resources/keycloak/oidc-cluster-admin-role-binding.yaml
 
-### Configuration du cluent Kubectl pour OpenID Connect
+## Configuration du client Kubectl pour OpenID Connect
 Installer Kubelogin (dans ~/bin pour un utilisateur norma, dans /usr/local/bin pour une installation globale)
     cd ~/bin # ou cd /usr/local/bin
     curl -LO https://github.com/int128/kubelogin/releases/download/v1.19.0/kubelogin_linux_amd64.zip
@@ -269,7 +361,7 @@ Pour utililiser ce profil:
 
 S'authentifier en tant qu'admin dans Keycloak si vous ne l'êtes pas déjà.
 
-## Dépot Nexus
+# Dépot Nexus
 Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
 Pour le déployer, utiliser le manifest suivant:
 
@@ -342,7 +434,77 @@ La première étape est de se connecter au serveur Keycloak et de créer les rô
 On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace default en exécutant le manifest suivant:
     kubectl apply -f resources/multitenants-default-role-bindings.yaml
 
+# Ajouter un noeud au cluster
 
+Voici les étapes pour ajouter le noeud kube04 au cluster. Ce neoud servira a l'exécution de tâches applicatives (worker node).
+
+La première étape est d'ajouter le nouveau noeud dans le DNS.
+    Ajouter la lignbe suivante dans le fichier de zone:
+        kube04.lacave   IN  A   192.168.1.24
+    Incrémenter le nbuméro de série dans l'entête du ficher de zone.
+    Rafraichir le DNS:
+        sudo systemctl reload bind9
+
+Installer Flatcar Container Linux tel que décrit dans la section de préparation des noeuds. Utiliser le fichier kube04-ignition.json
+
+Copier le certificat sur le nouveau noeud.
+    scp resources/cert/lacave-root.pem root@kube01:/etc/ssl/certs
+    ssh root@kube01 update-ca-certificates
+    ssh root@kube04 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube04:/etc/kubernetes/ssl
+
+Ajouter le noeud dans l'inventaire Ansible. Modifier les sections suivantes du fichier inventory/lacave/inventory.ini
+
+    [all]
+    kube01
+    kube02
+    kube03
+    kube04
+    [kube-node]
+    kube01
+    kube02
+    kube03
+    kube04
+
+Vérifier l'état des noeuds déjà en place:
+    kubectl get nodes
+    NAME     STATUS   ROLES    AGE   VERSION
+    kube01   Ready    master   20d   v1.18.2
+    kube02   Ready    worker   20d   v1.18.2
+    kube03   Ready    master   20d   v1.18.2
+
+S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de déploiement du cluster:
+    ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
+
+Vérifier l'état des noeuds:
+    kubectl get nodes
+    NAME     STATUS   ROLES    AGE     VERSION
+    kube01   Ready    master   20d     v1.18.2
+    kube02   Ready    worker   20d     v1.18.2
+    kube03   Ready    master   20d     v1.18.2
+    kube04   Ready    <none>   2m17s   v1.18.2
+
+Assigner un rôle au nouveau noeud:
+    kubectl label node kube04 node-role.kubernetes.io/worker=worker
+
+Vérifier l'état nes noeuds:
+kubectl get nodes
+    NAME     STATUS   ROLES    AGE     VERSION
+    kube01   Ready    master   20d     v1.18.2
+    kube02   Ready    worker   20d     v1.18.2
+    kube03   Ready    master   20d     v1.18.2
+    kube04   Ready    worker   3m59s   v1.18.2
+
+Dans le cas actuel, le nouveau noeud est équipé d'un disque ssd. On peut donc lui ajouter cet étiquette de manière à pouvoir le sélectionner pour les tâches intensives en io.
+    kubectl label nodes kube04 disktype=ssd
+
+On devrait avoir l'état final suivant:
+    kubectl get nodes --show-labels
+    NAME     STATUS   ROLES    AGE     VERSION   LABELS
+    kube01   Ready    master   20d     v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube01,kubernetes.io/os=linux,node-role.kubernetes.io/master=
+    kube02   Ready    worker   20d     v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube02,kubernetes.io/os=linux,kubernetes.io/role=worker
+    kube03   Ready    master   20d     v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube03,kubernetes.io/os=linux,node-role.kubernetes.io/master=
+    kube04   Ready    worker   7m28s   v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disktype=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube04,kubernetes.io/os=linux,node-role.kubernetes.io/worker=worker
 
 # Monitoring
 
