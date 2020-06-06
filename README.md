@@ -19,19 +19,19 @@ La deuxième étape est d'installer Ansible: https://docs.ansible.com/ansible/la
 # Configuration DNS
 
 Dans notre installation, Un serveur DNS bind est installé sur le serveur de povisionning.
-Le fichier de zone pour lacave est /etc/bind/lacave.db
+Le fichier de zone pour lacave est /etc/bind/lacave.info.db
 
     On créé des entres DNS pour les 3 noeuds ainsi que l'entré kube.lacave pour les 3 adresses IP des noeuds du cluster.
-    kube01.lacave   IN  A   192.168.1.21
-    kube02.lacave   IN  A   192.168.1.22
-    kube03.lacave   IN  A   192.168.1.23
-    kube.lacave.    IN  A   192.168.1.21
-                    IN  A   192.168.1.22
-                    IN  A   192.168.1.23
+    kube01.lacave.info. IN  A   192.168.1.21
+    kube02.lacave.info. IN  A   192.168.1.22
+    kube03.lacave.info. IN  A   192.168.1.23
+    kube.lacave.info.   IN  A   192.168.1.21
+                        IN  A   192.168.1.22
+                        IN  A   192.168.1.23
 
     Le services peuvent ensuite être publié en créant une entré de type cname. Pour l'application exemple, kubenginx on créé l'entré DNS suivante dans la zone lacave:
-    login.kube.lacave       CNAME   kube.lacave.
-    dashboard.kube.lacave   CNAME   kube.lacave.
+    login.kube.lacave.info       CNAME   kube.lacave.info
+    dashboard.kube.lacave.info   CNAME   kube.lacave.info
 
 # Création du PKI
 Afin de faciliter le création de certificats self-signed, on se cré un petite infrastructure à clé publique sur le serveur de provisionning.
@@ -65,8 +65,8 @@ Voici la strcture du fichier.
     "networkd": {
         "units": [
         {
-            "contents": "[Match]\nName=enp3s0\n\n[Network]\nAddress=192.168.1.XX/24\nGateway=192.168.1.1\nDNS=192.168.1.10",
-            "name": "00-enp3s0.network"
+            "contents": "[Match]\nName=eno1\n\n[Network]\nAddress=192.168.1.XX/24\nGateway=192.168.1.1\nDNS=192.168.1.10",
+            "name": "00-eno1.network"
         }
         ]
     },
@@ -77,8 +77,6 @@ Voici la strcture du fichier.
         "mode": 420,
         "contents": { "source": "data:,kubeXX" }
         }]
-    },
-    "systemd": {}
     }
 
 Faire un fichier par noeud (kube01, kube02 et kube03)
@@ -101,9 +99,9 @@ Faire le checkout du projet et des sous-projets dans un rpertoire de travail:
     git clone --recursive https://github.com/elfelip/kube-lacave.git
 
 Dans ce projet on utilise 3 noeuds:
-    kube01.lacave: premier master
-    kube02.lacave: noeud d'exécution d'application
-    kube03.lacave: deuxième master
+    kube01: premier master
+    kube02: noeud d'exécution d'application
+    kube03: deuxième master
 
 ## Ajout du certifact de du root CA dans les trust stores des noeuds
 Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire les opérations suivantes sur tous les noeuds:
@@ -175,19 +173,6 @@ On doit toutefois créer l'utilisateur Admin en utilisant le manifeste du sous-r
 
     kubectl apply -f resources/dashboard-adminuser.yml
 
-Si la configuration par défaut du dashboard de kubespray ne suffit pas, suivre les étapes suivantes pour le faire. Dans ce cas, le manifest pour la création de l'administrateur doit être modifier pour utiliser le namespace kubernetes-dashboard au lieu de kube-system.
-
-Se connecter sur le premier noeud master, kube01t, en tant que root ou sur le serveur Jenkins/Ansible.
-
-Déployer la dernière version du dashboard
-
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-rc1/aio/deploy/recommended.yaml
-
-
-On peut alors accéder à la console en suivante les étapes de la section Utilisation.
-
-Si on doit supprimer le dashboard, utiliser la commande suivante:
-    kubectl delete -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta8/aio/deploy/recommended.yaml
 
 # Utilisation
 
@@ -272,19 +257,25 @@ Lancer le manifest suivant pour créer le serveur Keycloak.
 
     kubectl create -f resources/keycloak/keycloak-deployment.yaml
 
-S'assurer que le DNS contient une entrée login.kube.lacave qui pointe vers les adresses IP des noeuds du cluster.
+S'assurer que le DNS contient une entrée login.kube.lacave.info qui pointe vers les adresses IP des noeuds du cluster.
 
-Accéder ensuite au serveur Keycloak: https://login.kube.lacave/auth/
+Accéder ensuite au serveur Keycloak: https://login.kube.lacave.info/auth/
 S'authentifier en tant que l'utilisateur admin/admin
+
+## Création du REALM
+Pour la sécurité de Kubernetes on créé le REALM kubernetes.
+Dans le menu REALM en haut a grauche, cliquer sur le bouton add realm.
+    Name: kubernetes
+Sélectionner ce realm pour les autres étapes.
 
 ## Création du client
 Dans le realm master créer le client suivant:
-    Client ID: kubeapi
+    Client ID: kubelacave
     Root URL: http://localhost:8000
     Client Protocol: openid connect
     Access type: Confidential
-    Ajouter le redirect uri: https://dashboard.kube.lacave
-    Ajouter l'origin: https://dashboard.kube.lacave
+    Ajouter le redirect uri: https://dashboard.kube.lacave.info
+    Ajouter l'origin: https://dashboard.kube.lacave.info
     Prendre en note de Client Secret de l'oinglet Credentials.
 
 Ajouter dans l'onglet mappers, cliquer Add builtin, sélectionner groups et cliquer Add selected
@@ -295,7 +286,7 @@ Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit
 
     Dans le menu Client Scope cliquer sur le bouton Create.
     Entrer les informations suivantes et cliquer Save:
-        Name: kube-api-audience
+        Name: kube-lacave-audience
         Description: Scope pour Kubernetes
         Protocol: openid-connect
         Display On Consent Screen: On
@@ -303,17 +294,16 @@ Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit
     Aller ensuite dans l'onglet Mappers:
     Cliquer sur Create
     Entrer les informations suivantes et cliquer Save:
-        Name: kube-api-audience
+        Name: kube-lacave-audience
         Mapper Type: Audience
-        Included Client Audience: kubeapi
+        Included Client Audience: kubelacave
         Add to ID token: On
         Add to access token: On
 
     Dans le menu Client
-    Sélectionner le client kubeapi
+    Sélectionner le client kubelacave
     Dans l'onglet Client Scope
-    Ajouter le scope kube-api-audience dans Assigned Default Client Scopes
-
+    Ajouter le scope kube-lacave-audience dans Assigned Default Client Scopes
 
 
 ## Création du rôle de REALM pour les administrateurs du cluster
@@ -351,8 +341,8 @@ Ajouter ensuite la section suivante dans votre ficher .kube/config:
             args:
             - oidc-login
             - get-token
-            - --oidc-issuer-url=https://login.kube.lacave/auth/realms/master
-            - --oidc-client-id=kubeapi
+            - --oidc-issuer-url=https://login.kube.lacave.info/auth/realms/kubernetes
+            - --oidc-client-id=kubelacave
             - --oidc-client-secret=client-secret-de-kube-api
 
 Pour utililiser ce profil:
@@ -367,8 +357,8 @@ Pour le déployer, utiliser le manifest suivant:
 
     kubectl apply -f resources/nexus/nexus-deployment.yml
 
-Le serveur nexus est accessible par l'URL https://nexus.lacave
-Le dépôt d'images de conteneurs est docker.lacave
+Le serveur nexus est accessible par l'URL https://nexus.lacave.info
+Le dépôt d'images de conteneurs est docker.lacave.info
 
 # Authentification au registre Docker du Nexus
 
@@ -377,17 +367,14 @@ Référence: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image
 
 S'authentifier au registre Docker du Nexus si ce n'est pas déjà fait:
 
-    docker login nexus3.inspq.qc.ca:5000
+    docker login docker.lacave.info
 
 Vérifier que le ficher de config Docker pour identifier les informations d'authentification:
 
     cat ~/.docker/config.json 
 {
 	"auths": {
-		"docker.lacave": {
-			"auth": "LeSecretEstDansLaSauce"
-		},
-		"nexus3.inspq.qc.ca:5000": {
+		"docker.lacave.info": {
 			"auth": "LeSecretEstDansLaSauce"
 		},
 		"https://index.docker.io/v1/": {
@@ -415,7 +402,7 @@ On peut ensuite déployer le manifest qui crée le proxy:
     kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
 
 S'assurer que l'entré DNS dashboard.kube.lacave existe dans le DNS et pointe vers les adresses des noeuds du Cluster.
-On peut accéder au Dashboard par l'adresse https://dashboard.kube.lacave
+On peut accéder au Dashboard par l'adresse https://dashboard.kube.lacave.info
 S'authentifier en tant qu'admin dans Keycloak.
 
 ## Configuration des rôles pour une architecture mutualisée

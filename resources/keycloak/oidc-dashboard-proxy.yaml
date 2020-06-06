@@ -20,8 +20,8 @@ spec:
         name: kubernetes-dashboard-proxy
         args:
           - --listen=0.0.0.0:3000
-          - --discovery-url=https://login.kube.lacave.info/auth/realms/master
-          - --client-id=kubeapi
+          - --discovery-url=https://login.kube.lacave.info/auth/realms/kubernetes
+          - --client-id=kubelacave
           - --client-secret=6710ed7f-a75c-4c38-9286-66e97f32e7ee
           - --redirection-url=https://dashboard.kube.lacave.info
           - --enable-refresh-tokens=true
