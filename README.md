@@ -304,13 +304,19 @@ Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit
     Sélectionner le client kubelacave
     Dans l'onglet Client Scope
     Ajouter le scope kube-lacave-audience dans Assigned Default Client Scopes
+    Dans l'onglet mappers
+    Ajouter un mapper en cliquant sur le bouton Add Builtin.
+    Cocher groups et cliquer Save
 
 
 ## Création du rôle de REALM pour les administrateurs du cluster
 
 Dans le menu Roles: Créer le rôle cluster-admin et cliquer Save
 
-Dans le menu Users: Sélectionner l'utilisateur Admin, dans l'onglet Role Mappings, lui assigner le rôle cluster-admin.
+Dans le menu Users: 
+
+Créer l'utilisateur admin, lui définir un mot de passe complex.
+Dans l'onglet Role Mappings, lui assigner le rôle cluster-admin.
 
 ## Créer l'association du rôle OIDC de cluster admin dans Kubernetes
 Créer le cluster role binding pour OIDC
@@ -351,6 +357,34 @@ Pour utililiser ce profil:
 
 S'authentifier en tant qu'admin dans Keycloak si vous ne l'êtes pas déjà.
 
+## Proxy Open ID Connect pour la Dashboard
+
+On créé un proxy Keycloak qui permet d'accéder au tableau de bord Kubernetes avec une Authentificaiton OpenID Connect.
+
+On peut ensuite déployer le manifest qui crée le proxy:
+
+    kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
+
+S'assurer que l'entré DNS dashboard.kube.lacave existe dans le DNS et pointe vers les adresses des noeuds du Cluster.
+On peut accéder au Dashboard par l'adresse https://dashboard.kube.lacave.info
+S'authentifier en tant qu'admin dans Keycloak.
+
+## Configuration des rôles pour une architecture mutualisée
+Un cluster mutualisé (multi-tenant) permet le partage des ressources entre plusieurs équipes.
+Le principes est que chaque équipe a un namespace. Il y a 3 types d'utilisateur pour un namespace:
+    Administrateur du namespace (admin): Cet utilisateur peut effectuer toute les opérations tant qu'elle sont à l'intérieur de son namespace.
+    Accès en modification (edit): Cet utilisateur peut créer, modifier et supprimer certains type d'objet dans un namespace comme des pods, des déploiement, des stateful set, des certificats etc. C'est habituellement le rôle qu'on donne au développeur.
+    Accès en lecture (view): Ce rôle permet de voir les objets du namespace. Ca peut être utile pour du monitoring au donner des accès a un personne externe à l'équipe.
+
+Dans notre exemple, on configure les rôles pour le namespace default.
+La première étape est de se connecter au serveur Keycloak et de créer les rôles de realm suivants:
+    default-namespace-admin: Administrateurs du namespace default
+    default-namespace-edit: Développeur du namespace default
+    default-namespace-view: Consulter les objets du namespace default
+
+On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace default en exécutant le manifest suivant:
+    kubectl apply -f resources/multitenants-default-role-bindings.yaml
+
 # Dépot Nexus
 Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
 Pour le déployer, utiliser le manifest suivant:
@@ -386,40 +420,10 @@ Vérifier que le ficher de config Docker pour identifier les informations d'auth
 Créer le secret dans Kubernetes:
 
     kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n kube-system
+    kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n default
+    
 Ce secret doit être créé dans chacun des Namespace qui utilise le registre privé.
 
-## Proxy Open ID Connect pour la Dashboard
-
-On créé un proxy Keycloak qui permet d'accéder au tableau de bord Kubernetes avec une Authentificaiton OpenID Connect.
-
-La première étape est de créer un image qui accepte les certificats auto-signé de notre environnement.
-
-    Se déplacer dans le répertoire resources/keycloak/keycloak-proxy
-    Exécuter le script: build.sh
-
-On peut ensuite déployer le manifest qui crée le proxy:
-
-    kubectl apply -f resources/keycloak/oidc-dashboard-proxy.yaml
-
-S'assurer que l'entré DNS dashboard.kube.lacave existe dans le DNS et pointe vers les adresses des noeuds du Cluster.
-On peut accéder au Dashboard par l'adresse https://dashboard.kube.lacave.info
-S'authentifier en tant qu'admin dans Keycloak.
-
-## Configuration des rôles pour une architecture mutualisée
-Un cluster mutualisé (multi-tenant) permet le partage des ressources entre plusieurs équipes.
-Le principes est que chaque équipe a un namespace. Il y a 3 types d'utilisateur pour un namespace:
-    Administrateur du namespace (admin): Cet utilisateur peut effectuer toute les opérations tant qu'elle sont à l'intérieur de son namespace.
-    Accès en modification (edit): Cet utilisateur peut créer, modifier et supprimer certains type d'objet dans un namespace comme des pods, des déploiement, des stateful set, des certificats etc. C'est habituellement le rôle qu'on donne au développeur.
-    Accès en lecture (view): Ce rôle permet de voir les objets du namespace. Ca peut être utile pour du monitoring au donner des accès a un personne externe à l'équipe.
-
-Dans notre exemple, on configure les rôles pour le namespace default.
-La première étape est de se connecter au serveur Keycloak et de créer les rôles de realm suivants:
-    default-namespace-admin: Administrateurs du namespace default
-    default-namespace-edit: Développeur du namespace default
-    default-namespace-view: Consulter les objets du namespace default
-
-On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace default en exécutant le manifest suivant:
-    kubectl apply -f resources/multitenants-default-role-bindings.yaml
 
 # Ajouter un noeud au cluster
 

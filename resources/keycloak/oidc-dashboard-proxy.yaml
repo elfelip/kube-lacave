@@ -16,13 +16,13 @@ spec:
       imagePullSecrets:
       - name: regcred
       containers:
-      - image: docker.lacave/keycloak-gatekeeper:latest
+      - image: keycloak/keycloak-gatekeeper:latest
         name: kubernetes-dashboard-proxy
         args:
           - --listen=0.0.0.0:3000
           - --discovery-url=https://login.kube.lacave.info/auth/realms/kubernetes
           - --client-id=kubelacave
-          - --client-secret=6710ed7f-a75c-4c38-9286-66e97f32e7ee
+          - --client-secret=LeSecretGenereParKeycloak
           - --redirection-url=https://dashboard.kube.lacave.info
           - --enable-refresh-tokens=true
           - --encryption-key=673ff5f9ea254d0ea89dc3cc0d8ea26a    # 32 bytes string
