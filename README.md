@@ -129,6 +129,8 @@ S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de dépl
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
+Assigner un rôle au noeud kube02:
+    kubectl label node kube02 node-role.kubernetes.io/worker=worker
 
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
@@ -449,8 +451,8 @@ La première étape est d'ajouter le nouveau noeud dans le DNS.
 Installer Flatcar Container Linux tel que décrit dans la section de préparation des noeuds. Utiliser le fichier kube04-ignition.json
 
 Copier le certificat sur le nouveau noeud.
-    scp resources/cert/lacave-root.pem root@kube01:/etc/ssl/certs
-    ssh root@kube01 update-ca-certificates
+    scp resources/cert/lacave-root.pem root@kube04:/etc/ssl/certs
+    ssh root@kube04 update-ca-certificates
     ssh root@kube04 mkdir -p /etc/kubernetes/ssl
     scp resources/cert/lacave-root.pem root@kube04:/etc/kubernetes/ssl
 
