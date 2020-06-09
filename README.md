@@ -264,7 +264,17 @@ S'authentifier en tant que l'utilisateur admin/admin
 
 ## Création du REALM
 Pour la sécurité de Kubernetes on créé le REALM kubernetes.
+
+Pour créer le realm kubernetes, on peut importer le fichier resources/keycloak/kubernetes-realm.json.
+Pour se faire, se connecter à la console Keycloak en tant qu'admin: https://login.kube.lacave.info
 Dans le menu REALM en haut a grauche, cliquer sur le bouton add realm.
+Cliquer sur le bouton Select file de l'item Import
+Sélectionner le fichier resources/keycloak/kubernetes-realm.json
+Ne pas modifier le nom et cliquer import.
+
+Sinon, on peut créer les configurations manuellements en suivant les étapes Keycloak décrites dans le reste de ce document.
+
+Si vous n'avez pas importé le realm, aller dans le menu REALM en haut a grauche, cliquer sur le bouton add realm.
     Name: kubernetes
 Sélectionner ce realm pour les autres étapes.
 
@@ -421,7 +431,7 @@ Créer le secret dans Kubernetes:
 
     kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n kube-system
     kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n default
-    
+
 Ce secret doit être créé dans chacun des Namespace qui utilise le registre privé.
 
 
