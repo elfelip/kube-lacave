@@ -342,7 +342,12 @@ Installer Kubelogin (dans ~/bin pour un utilisateur norma, dans /usr/local/bin p
     unzip kubelogin_linux_amd64.zip
     chmod a+x kubelogin
     ln -s kubelogin kubectl-oidc_login
+Sur MacOS
+    brew install int128/kubelogin/kubelogin
+    sudo ln -s /usr/local/bin/kubelogin /usr/local/bin/oidc-login
 
+    Pour ajouter l'utorité de certification: https://www.eduhk.hk/ocio/content/faq-how-add-root-certificate-mac-os-x
+    
 Ajouter ensuite la section suivante dans votre ficher .kube/config:
 
     apiVersion: v1
