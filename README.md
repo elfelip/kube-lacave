@@ -509,6 +509,50 @@ On devrait avoir l'état final suivant:
     kube03   Ready    master   20d     v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube03,kubernetes.io/os=linux,node-role.kubernetes.io/master=
     kube04   Ready    worker   7m28s   v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disktype=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube04,kubernetes.io/os=linux,node-role.kubernetes.io/worker=worker
 
+# Istio
+Cette partie décrit comment déployer le SErvice Mesh Istio dans le cluster.
+
+## Pré-requis
+Pour une maximum de conrôle, on doit installer les composants suivants avant de déployer Istio.
+
+## Déploiement de Istio
+Istio est un ensemble de composant ajouté à Kubernetes pour la gestion de service mesh.
+On utilise istictl pour le déployer sur le cluster Kubernetes.
+Voici les instructions pour le déployer à partir du premier noeud maitre du cluster qlkub01t:
+
+    Installer istioctl sur le serveur de déploiement:
+        cd $HOME/bin
+        curl -L https://istio.io/downloadIstio | sh -
+        export PATH="$PATH:$HOME/bin/istio-1.6.1/bin"
+    Déployer le profil par défaut:
+        istioctl install --set profile=demo
+
+
+Pour accéder aux diverses consoles, on peut installer istio sur notre poste. L'outil istioctl va utiliser la configuration par défaut du fichier ~/.kube/config.json pour se connnecter au cluster Kubernetes.
+On peut alors accéder aux consoles avec les commandes suivantes:
+
+    istioctl dashboard ConsoleAOuvrir.
+    
+Les consoles disponibles sont:
+
+    controlz    Open ControlZ web UI
+    envoy       Open Envoy admin web UI
+    grafana     Open Grafana web UI
+    jaeger      Open Jaeger web UI
+    kiali       Open Kiali web UI
+    prometheus  Open Prometheus web UI
+    zipkin      Open Zipkin web UI
+
+## Node exporter
+On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
+On ajoute certains composants comme le node exporter permettant de monitorer les noeuds du cluster Kubernetes.
+
+Créer le namespace
+    kubectl apply - resources/monitoring/monitoring-deployment.yml
+
+Installer le node exporter
+    helm install -n monitoring node-exporter stable/prometheus-node-exporter
+    
 # Monitoring
 
 Pour le monitoring, on install l'opérateur Prometheus à l'aide du helm chart.
@@ -548,40 +592,6 @@ On peut donc installer le composant pie-chart en exécutant les commandes suivan
     À partir du serveur qlkub01t:
     helm upgrade prometheuslabo stable/prometheus-operator --set grafana.plugins[0]=grafana-piechart-panel
 
-# Istio
-
-Istio est un ensemble de composant ajouté à Kubernetes pour la gestion de service mesh.
-On utilise istictl pour le déployer sur le cluster Kubernetes.
-Voici les instructions pour le déployer à partir du premier noeud maitre du cluster qlkub01t:
-
-    Installer les fichier istio sur le master:
-        wget https://github.com/istio/istio/releases/download/1.4.3/istio-1.4.3-linux.tar.gz
-        tar -zxvf istio-1.4.3-linux.tar.gz
-        cd istio-1.4.3
-    Déployer le profil par défaut:
-        bin/istioctl manifest apply --set values.grafana.enabled=true
-        This will install the default Istio profile into the cluster. Proceed? (y/N) y
-
-Pour accéder au dashboard grafana du namespace istio:
-
-    Lancer la commande suivantes sur votre poste de travail ou kubectl est installé et configuré:
-        kubectl -n istio-system port-forward $(kubectl -n istio-system get pod -l app=grafana -o jsonpath='{.items[0].madata.name}') 3000:3000
-    Vous pouvez accéder à la console par l'URL: http://localhost:3000
-
-Pour accéder aux diverses consoles, on peut installer istio sur notre poste. L'outil istioctl va utiliser la configuration par défaut du fichier ~/.kube/config.json pour se connnecter au cluster Kubernetes.
-On peut alors accéder aux consoles avec les commandes suivantes:
-
-    istioctl dashboard ConsoleAOuvrir.
-    
-Les consoles disponibles sont:
-
-    controlz    Open ControlZ web UI
-    envoy       Open Envoy admin web UI
-    grafana     Open Grafana web UI
-    jaeger      Open Jaeger web UI
-    kiali       Open Kiali web UI
-    prometheus  Open Prometheus web UI
-    zipkin      Open Zipkin web UI
 
 
 
@@ -598,12 +608,3 @@ Calico (réseau):
  
  
 
-# Monitoring
-On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
-On ajoute certains composants comme le node exporter permettant de monitorer les noeuds du cluster Kubernetes.
-
-Créer le namespace
-    kubectl apply - resources/monitoring/monitoring-deployment.yaml
-
-Installer le node exporter
-    helm install -n monitoring node-exporter stable/prometheus-node-exporter
