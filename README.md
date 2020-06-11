@@ -510,10 +510,24 @@ On devrait avoir l'état final suivant:
     kube04   Ready    worker   7m28s   v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disktype=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube04,kubernetes.io/os=linux,node-role.kubernetes.io/worker=worker
 
 # Istio
-Cette partie décrit comment déployer le SErvice Mesh Istio dans le cluster.
+Cette partie décrit comment déployer le Service Mesh Istio dans le cluster.
 
 ## Pré-requis
 Pour une maximum de conrôle, on doit installer les composants suivants avant de déployer Istio.
+
+Restreindre l'exécution du ingress nginx pour pouvoir utiliser l'ingress de istio.
+On va ajouter un label ingress-type sur chacun des noeuds pour avoir le ingress nginx sur lube01 et kube02 et le ingress istion sur kube03 et kube04
+
+    kubectl label nodes kube01 kube02 ingress-type=nginx
+    kubectl label nodes kube03 kube04 ingress-type=istio
+
+Modifier le ingress nginx:
+    kubectl -n ingress-nginx edit daemonset ingress-nginx-controller
+
+Ajouter la condition ingress-type dans la partie nodeSelector comme suit et sauvegarder le fichier.
+      nodeSelector:
+        ingress-type: nginx
+        kubernetes.io/os: linux
 
 ## Déploiement de Istio
 Istio est un ensemble de composant ajouté à Kubernetes pour la gestion de service mesh.
@@ -527,6 +541,32 @@ Voici les instructions pour le déployer à partir du premier noeud maitre du cl
     Déployer le profil par défaut:
         istioctl install --set profile=demo
 
+Une fois le déploiement tereminé, on peut ajouter le nodeSelector dans le déploiement du ingress istio
+
+Modifier le deployment:
+    kubectl -n istio-system edit deployment istio-ingressgateway
+Ajouter la section suivante dans la partie spec.template.containers[0].affinity
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+              - key: ingress-type
+                operator: In
+                values:
+                - istio    nodeSelector:
+
+On peut ajouter une adresse IP au Istio Ingress Gateway.
+Modifier le gateway:
+    kubectl -n istio-system edit svc istio-ingressgateway
+Section spec, ajouter les lignes suivantes:
+    externalIPs:
+    - 192.168.1.25
+Choisir une adresse IP non utilisée car elle va être ajoutée au hosts qui roulent le gateway.
 
 Pour accéder aux diverses consoles, on peut installer istio sur notre poste. L'outil istioctl va utiliser la configuration par défaut du fichier ~/.kube/config.json pour se connnecter au cluster Kubernetes.
 On peut alors accéder aux consoles avec les commandes suivantes:
@@ -550,9 +590,15 @@ On ajoute certains composants comme le node exporter permettant de monitorer les
 Créer le namespace
     kubectl apply - resources/monitoring/monitoring-deployment.yml
 
+Ajouter le repo stable
+    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
 Installer le node exporter
     helm install -n monitoring node-exporter stable/prometheus-node-exporter
-    
+
+## Configuration de Grafana
+
+On peut ajouter un dashboard pour le node exporter: https://grafana.com/grafana/dashboards/1860
+
 # Monitoring
 
 Pour le monitoring, on install l'opérateur Prometheus à l'aide du helm chart.
