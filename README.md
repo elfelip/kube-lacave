@@ -602,10 +602,15 @@ Installer le node exporter
 
 ## Configuration de Grafana
 
-On peut ajouter un dashboard pour le node exporter: https://grafana.com/grafana/dashboards/1860
+On peut ajouter un dashboard pour le node exporter: https://grafana.com/api/dashboards/1860/revisions/20/download
 
 # Stockage
-Après l'installation de Kubespray avec l'inventaire actuel, seul le stockage local est disponible. Ce stockage n'est ni portable d'un noeud à l'autre ni redontant. Pour ajouter la redondance au niveau du stokcage on va installer l'opérateur CEPH rook: https://rook.io
+Après l'installation de Kubespray avec l'inventaire actuel, seul le stockage local est disponible. Ce stockage n'est ni portable d'un noeud à l'autre ni redontant. 
+
+## Stockage Ceph avec l'opérateur Rook
+Pour ajouter la redondance au niveau du stokcage on va installer l'opérateur CEPH rook: https://rook.io
+
+Cet opérateur scrute continuellement les noeuds du cluster Kubernetes et détecte automatiquement les nouveau disques qui y sont attachés. Si les disques sont vides, il va automatiquement l'ajouter au cluster.
 
 On suivi certaines étapes du LAB Rook-on-Bare-Metal-Workshop disponible sur github: https://github.com/packet-labs/Rook-on-Bare-Metal-Workshop 
 
@@ -651,8 +656,17 @@ Les manifest pour créer l'opérateur sont dans le répertoire resources/rook.
         kubectl apply -f resources/rook/dashboard-ingress-https.yaml
     7) Lancer la commande suivante pour obtenir le mot de passe de l'utilisateur admin de la console:
         kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o json | jq -r .data.password | base64 -d
+    8) Créer le pool CEPH.
+        kubectl apply -f resources/rook/pool.yaml
+    8) Créer le storage class.
+        kubectl apply -f resources/rook/storageclass.yaml
 
-# Troubleshooting
+## Ajout d'un nouveau disque
+En principe, si un nouveau disque vide est attaché à un noeud du cluster, un nouveau OSD devrait être créé automatiquement.
+Dans le cas ou la détection ne fonctionnerait pas on peut redémarrer l'opérateur en supprimant le pod avec la commmande suivante:
+    kubectl -n rook-ceph delete pod -l app=rook-ceph-operator
+
+# Troubleshooting Kubernetes
 
 Calico (réseau):
     export ETCD_KEY_FILE=/etc/calico/certs/key.pem
