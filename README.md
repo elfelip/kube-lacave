@@ -604,47 +604,53 @@ Installer le node exporter
 
 On peut ajouter un dashboard pour le node exporter: https://grafana.com/grafana/dashboards/1860
 
-# Monitoring
+# Stockage
+Après l'installation de Kubespray avec l'inventaire actuel, seul le stockage local est disponible. Ce stockage n'est ni portable d'un noeud à l'autre ni redontant. Pour ajouter la redondance au niveau du stokcage on va installer l'opérateur CEPH rook: https://rook.io
 
-Pour le monitoring, on install l'opérateur Prometheus à l'aide du helm chart.
+On suivi certaines étapes du LAB Rook-on-Bare-Metal-Workshop disponible sur github: https://github.com/packet-labs/Rook-on-Bare-Metal-Workshop 
 
-Pour l'installer, se connecter en tant que root sur le premier noeud master du cluster: qlkub01t
+La première étape est d'ajouter des disques sur les noeuds. On doit ajouter au moins 3 disques et les mettre sur des noeuds différents pour répondre aux exigeances de redondance de CEPH.
 
-Installer le helm chart:
+Le disques ne doivent pas avoir de partition existantes: J'ai du supprimer les données de mes disques en utilisant la commande suivante en tant que root sur les noeuds. ATTENTION, NE PAS EXECUTER CETTE COMMANDE SUR UN DISQUE UTILISÉ. CA VA TOUT SUPPRIMER SANS AVERTISSEMENT ET EN UN TEMPS RECORD...
 
-    helm install --name prometheuslabo stable/prometheus-operator
+    ls -l /dev/sd*
+    brw-rw----. 1 root disk 8,  0 Jun 25 12:38 /dev/sda
+    brw-rw----. 1 root disk 8,  1 Jun 25 12:38 /dev/sda1
+    brw-rw----. 1 root disk 8,  2 Jun 25 12:38 /dev/sda2
+    brw-rw----. 1 root disk 8,  3 Jun 25 12:38 /dev/sda3
+    brw-rw----. 1 root disk 8,  4 Jun 25 12:38 /dev/sda4
+    brw-rw----. 1 root disk 8,  6 Jun 25 12:38 /dev/sda6
+    brw-rw----. 1 root disk 8,  7 Jun 25 12:38 /dev/sda7
+    brw-rw----. 1 root disk 8,  9 Jun 25 12:38 /dev/sda9
+    brw-rw----. 1 root disk 8, 16 Jun 25 12:38 /dev/sdb
+    # On peut voir que /dev/sda est utilisé par le système d'exploitation et que /dev/sdb est libre.
+    dd if=/dev/zero of=/dev/sdb bs=512 count=1
 
-On peut avoir le statut de l'opérateur avec la commande suivante:
+Les manifest pour créer l'opérateur sont dans le répertoire resources/rook.
 
-    kubectl --namespace default get pods -l "release=prometheuslabo"
-
-Créer les ingress pour les consoles Grafana et Prometheus en appliquant les fichiers de déploiements suivants:
-
-    kubectl --context=kubernetes-admin@labo.inspq apply -f resources/grafana-ingress.yml
-    kubectl --context=kubernetes-admin@labo.inspq apply -f resources/prometheus-ingress.yml
-
-Créé les entrés DNS suivantes dans la zone laboinspq.qc.ca:
-    kubegrafana.laboinspq.qc.ca CNAME kubecluster.laboinspq.qc.ca
-    kubeprometheus.laboinspq.qc.ca CNAME kubecluster.laboinspq.qc.ca
-
-On peut obtenir le username/password avec les commandes suivantes:
-
-    kubectl --context=kubernetes-admin@labo.inspq get secret prometheuslabo-grafana -o jsonpath='{.data.admin-user}' | base64 --decode
-    kubectl --context=kubernetes-admin@labo.inspq get secret prometheuslabo-grafana -o jsonpath='{.data.admin-password}' | base64 --decode
-    
-La console Grafana est accessible à l'adresse suivante http://kubegrafana.laboinspq.qc.ca/login
-La console Prometheus est accessible à l'adresse suivante http://kubeprometheus.laboinspq.qc.ca
-
-## Ajouter des composants
-
-On peut ajouter des composants à grafana en utilisant le CLI inclu dans le pod.
-On peut donc installer le composant pie-chart en exécutant les commandes suivantes:
-
-    À partir du serveur qlkub01t:
-    helm upgrade prometheuslabo stable/prometheus-operator --set grafana.plugins[0]=grafana-piechart-panel
-
-
-
+    1) Le premier manifest crée les Custom Resource Definition et le namespace rook-ceph
+        kubectl apply -f resources/rook/common.yaml
+    2) Le deuxième manifest créé l'opérateur.
+        kubectl apply -r resources/rook/operator.yaml
+    3) On doit ensuite attendre que tous les pods soient créé avant de passer à l'étape suivante:
+        watch kubectl get pods -n rook-ceph
+        rook-ceph-operator-5b6674cb6-mrwb5                 1/1     Running     0          13h
+        rook-discover-2b87n                                1/1     Running     1          17h
+        rook-discover-bdq74                                1/1     Running     1          17h
+        rook-discover-c4c9b                                1/1     Running     1          17h
+        rook-discover-nvstr                                1/1     Running     1          17h
+    4) On peut ensuite créer le cluster CEPH.
+        kubectl apply -f resources/rook/cluster.yaml
+    5) On peut suivre l'évolution de la création du cluster avec la commande suivante:
+        watch kubectl get CephCluster -n rook-ceph
+        NAME        DATADIRHOSTPATH   MONCOUNT   AGE   PHASE   MESSAGE                        HEALTH
+        rook-ceph   /var/lib/rook     3          24h   Ready   Cluster created successfully   OK
+    6) L'opérateur Rook a aussi déployé une console d'administation du cluster Ceph. Pour faciliter l'accessibilité à cette console on créé l'entré DNS suivant dans la zone lacave.info:
+        cephdashboard.kube.lacave.info
+        et un Ingress:
+        kubectl apply -f resources/rook/dashboard-ingress-https.yaml
+    7) Lancer la commande suivante pour obtenir le mot de passe de l'utilisateur admin de la console:
+        kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o json | jq -r .data.password | base64 -d
 
 # Troubleshooting
 
