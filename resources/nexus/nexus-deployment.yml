@@ -45,42 +45,62 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-    namespace: nexus
-    name: nexus-deployment
-    labels:
-        app: nexus
+  namespace: nexus
+  name: nexus-deployment
+  labels:
+    app: nexus
 spec:
-    serviceName: nexus
-    replicas: 1
-    selector:
-        matchLabels:
-            app: nexus
-    template:
-        metadata:
-            labels:
-                app: nexus
-        spec:
-            securityContext:
-                runAsUser: 0
-                runAsGroup: 0
-                fsGroup: 0
-            volumes:
-                - name: nexus-data
-                  persistentVolumeClaim:
-                    claimName: nexus3-claim
-            containers:
-            - name: nexus
-              image: sonatype/nexus3:latest
-              ports:
-              - containerPort: 8081
-              volumeMounts:
-              - name: nexus-data
-                mountPath: /nexus-data
+  serviceName: nexus
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nexus
+  template:
+    metadata:
+      labels:
+        app: nexus
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      volumes:
+#      - name: nexus-data
+#        persistentVolumeClaim:
+#          claimName: nexus3-claim
+      - name: nexus-ceph-data
+        persistentVolumeClaim:
+          claimName: nexus3-ceph-claim
+      containers:
+      - name: nexus
+        image: sonatype/nexus3:latest
+        ports:
+        - containerPort: 8081
+        volumeMounts:
+#        - name: nexus-data
+#          mountPath: /nexus-data
+        - name: nexus-ceph-data
+          mountPath: /nexus-data
 ---
+#kind: PersistentVolumeClaim
+#apiVersion: v1
+#metadata:
+#    name: nexus3-claim
+#    namespace: nexus
+#    labels:
+#        app: nexus
+#spec:
+#    accessModes:
+#    - ReadWriteOnce
+#    resources:
+#        requests:
+#            storage: 100Gi
+#    storageClassName: local-path
+#---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-    name: nexus3-claim
+    name: nexus3-ceph-claim
     namespace: nexus
     labels:
         app: nexus
@@ -90,7 +110,7 @@ spec:
     resources:
         requests:
             storage: 100Gi
-    storageClassName: local-path
+    storageClassName: rook-ceph-block
 ---
     apiVersion: v1
     kind: Service

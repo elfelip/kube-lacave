@@ -252,6 +252,98 @@ Cert-manager peut créer des certificats en utilisant une autoirité de certific
 
     kubectl create -f resources/cert/root-ca-cert-manager.yml
 
+# Stockage
+Après l'installation de Kubespray avec l'inventaire actuel, seul le stockage local est disponible. Ce stockage n'est ni portable d'un noeud à l'autre ni redontant. 
+
+## Stockage Ceph avec l'opérateur Rook
+Pour ajouter la redondance au niveau du stokcage on va installer l'opérateur CEPH rook: https://rook.io
+
+Cet opérateur scrute continuellement les noeuds du cluster Kubernetes et détecte automatiquement les nouveau disques qui y sont attachés. Si les disques sont vides, il va automatiquement l'ajouter au cluster.
+
+Les manifests utilisés proviennent du dépôt git https://github.com/rook/rook.git
+
+On a suivi certaines étapes du LAB Rook-on-Bare-Metal-Workshop disponible sur github: https://github.com/packet-labs/Rook-on-Bare-Metal-Workshop 
+
+La première étape est d'ajouter des disques sur les noeuds. On doit ajouter au moins 3 disques et les mettre sur des noeuds différents pour répondre aux exigeances de redondance de CEPH.
+
+Le disques ne doivent pas avoir de partition existantes: J'ai du supprimer les données de mes disques en utilisant la commande suivante en tant que root sur les noeuds. ATTENTION, NE PAS EXECUTER CETTE COMMANDE SUR UN DISQUE UTILISÉ. CA VA TOUT SUPPRIMER SANS AVERTISSEMENT ET EN UN TEMPS RECORD...
+
+    ls -l /dev/sd*
+    brw-rw----. 1 root disk 8,  0 Jun 25 12:38 /dev/sda
+    brw-rw----. 1 root disk 8,  1 Jun 25 12:38 /dev/sda1
+    brw-rw----. 1 root disk 8,  2 Jun 25 12:38 /dev/sda2
+    brw-rw----. 1 root disk 8,  3 Jun 25 12:38 /dev/sda3
+    brw-rw----. 1 root disk 8,  4 Jun 25 12:38 /dev/sda4
+    brw-rw----. 1 root disk 8,  6 Jun 25 12:38 /dev/sda6
+    brw-rw----. 1 root disk 8,  7 Jun 25 12:38 /dev/sda7
+    brw-rw----. 1 root disk 8,  9 Jun 25 12:38 /dev/sda9
+    brw-rw----. 1 root disk 8, 16 Jun 25 12:38 /dev/sdb
+    # On peut voir que /dev/sda est utilisé par le système d'exploitation et que /dev/sdb est libre.
+    dd if=/dev/zero of=/dev/sdb bs=512 count=1
+
+Les manifest pour créer l'opérateur sont dans le répertoire resources/rook.
+
+    1) Le premier manifest crée les Custom Resource Definition et le namespace rook-ceph
+        kubectl apply -f resources/rook/common.yaml
+    2) Le deuxième manifest créé l'opérateur.
+        kubectl apply -r resources/rook/operator.yaml
+    3) On doit ensuite attendre que tous les pods soient créé avant de passer à l'étape suivante:
+        watch kubectl get pods -n rook-ceph
+        rook-ceph-operator-5b6674cb6-mrwb5                 1/1     Running     0          13h
+        rook-discover-2b87n                                1/1     Running     1          17h
+        rook-discover-bdq74                                1/1     Running     1          17h
+        rook-discover-c4c9b                                1/1     Running     1          17h
+        rook-discover-nvstr                                1/1     Running     1          17h
+    4) On peut ensuite créer le cluster CEPH.
+        kubectl apply -f resources/rook/cluster.yaml
+    5) On peut suivre l'évolution de la création du cluster avec la commande suivante:
+        watch kubectl get CephCluster -n rook-ceph
+        NAME        DATADIRHOSTPATH   MONCOUNT   AGE   PHASE   MESSAGE                        HEALTH
+        rook-ceph   /var/lib/rook     3          24h   Ready   Cluster created successfully   OK
+    6) L'opérateur Rook a aussi déployé une console d'administation du cluster Ceph. Pour faciliter l'accessibilité à cette console on créé l'entré DNS suivant dans la zone lacave.info:
+        cephdashboard.kube.lacave.info
+        et un Ingress:
+        kubectl apply -f resources/rook/dashboard-ingress-https.yaml
+    7) Lancer la commande suivante pour obtenir le mot de passe de l'utilisateur admin de la console:
+        kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o json | jq -r .data.password | base64 -d
+    8) Créer le pool CEPH.
+        kubectl apply -f resources/rook/pool.yaml
+    8) Créer le storage class.
+        kubectl apply -f resources/rook/storageclass.yaml
+
+## Ajout d'un nouveau disque
+En principe, si un nouveau disque vide est attaché à un noeud du cluster, un nouveau OSD devrait être créé automatiquement.
+Dans le cas ou la détection ne fonctionnerait pas on peut redémarrer l'opérateur en supprimant le pod avec la commmande suivante:
+    kubectl -n rook-ceph delete pod -l app=rook-ceph-operator
+
+## Outils d'administration de CEPH
+Rook inclu une image toolbox contenant les outils d'administration et de diagnostiques de CEPH. 
+La documentation est disponible à l'adresse https://rook.io/docs/rook/v1.3/ceph-toolbox.html
+Utiliser le manifest suivant pour l'installer:
+    kubectl apply -f resources/rook/toolbox.yaml
+
+Pour l'utiliser:
+    kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath='{.items[0].metadata.name}') bash
+    ceph status 
+    cluster:
+        id:     3a286781-4924-4b95-806c-3113bd166395
+        health: HEALTH_WARN
+                1 daemons have recently crashed
+    
+    services:
+        mon: 3 daemons, quorum d,f,g (age 38h)
+        mgr: a(active, since 43m)
+        osd: 3 osds: 3 up (since 23h), 3 in (since 23h)
+    
+    data:
+        pools:   1 pools, 32 pgs
+        objects: 2.88k objects, 11 GiB
+        usage:   33 GiB used, 964 GiB / 997 GiB avail
+        pgs:     32 active+clean
+    
+    io:
+        client:   341 B/s wr, 0 op/s rd, 0 op/s wr
+
 # Configuration OpenID Connect
 
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
@@ -604,67 +696,6 @@ Installer le node exporter
 
 On peut ajouter un dashboard pour le node exporter: https://grafana.com/api/dashboards/1860/revisions/20/download
 
-# Stockage
-Après l'installation de Kubespray avec l'inventaire actuel, seul le stockage local est disponible. Ce stockage n'est ni portable d'un noeud à l'autre ni redontant. 
-
-## Stockage Ceph avec l'opérateur Rook
-Pour ajouter la redondance au niveau du stokcage on va installer l'opérateur CEPH rook: https://rook.io
-
-Cet opérateur scrute continuellement les noeuds du cluster Kubernetes et détecte automatiquement les nouveau disques qui y sont attachés. Si les disques sont vides, il va automatiquement l'ajouter au cluster.
-
-On suivi certaines étapes du LAB Rook-on-Bare-Metal-Workshop disponible sur github: https://github.com/packet-labs/Rook-on-Bare-Metal-Workshop 
-
-La première étape est d'ajouter des disques sur les noeuds. On doit ajouter au moins 3 disques et les mettre sur des noeuds différents pour répondre aux exigeances de redondance de CEPH.
-
-Le disques ne doivent pas avoir de partition existantes: J'ai du supprimer les données de mes disques en utilisant la commande suivante en tant que root sur les noeuds. ATTENTION, NE PAS EXECUTER CETTE COMMANDE SUR UN DISQUE UTILISÉ. CA VA TOUT SUPPRIMER SANS AVERTISSEMENT ET EN UN TEMPS RECORD...
-
-    ls -l /dev/sd*
-    brw-rw----. 1 root disk 8,  0 Jun 25 12:38 /dev/sda
-    brw-rw----. 1 root disk 8,  1 Jun 25 12:38 /dev/sda1
-    brw-rw----. 1 root disk 8,  2 Jun 25 12:38 /dev/sda2
-    brw-rw----. 1 root disk 8,  3 Jun 25 12:38 /dev/sda3
-    brw-rw----. 1 root disk 8,  4 Jun 25 12:38 /dev/sda4
-    brw-rw----. 1 root disk 8,  6 Jun 25 12:38 /dev/sda6
-    brw-rw----. 1 root disk 8,  7 Jun 25 12:38 /dev/sda7
-    brw-rw----. 1 root disk 8,  9 Jun 25 12:38 /dev/sda9
-    brw-rw----. 1 root disk 8, 16 Jun 25 12:38 /dev/sdb
-    # On peut voir que /dev/sda est utilisé par le système d'exploitation et que /dev/sdb est libre.
-    dd if=/dev/zero of=/dev/sdb bs=512 count=1
-
-Les manifest pour créer l'opérateur sont dans le répertoire resources/rook.
-
-    1) Le premier manifest crée les Custom Resource Definition et le namespace rook-ceph
-        kubectl apply -f resources/rook/common.yaml
-    2) Le deuxième manifest créé l'opérateur.
-        kubectl apply -r resources/rook/operator.yaml
-    3) On doit ensuite attendre que tous les pods soient créé avant de passer à l'étape suivante:
-        watch kubectl get pods -n rook-ceph
-        rook-ceph-operator-5b6674cb6-mrwb5                 1/1     Running     0          13h
-        rook-discover-2b87n                                1/1     Running     1          17h
-        rook-discover-bdq74                                1/1     Running     1          17h
-        rook-discover-c4c9b                                1/1     Running     1          17h
-        rook-discover-nvstr                                1/1     Running     1          17h
-    4) On peut ensuite créer le cluster CEPH.
-        kubectl apply -f resources/rook/cluster.yaml
-    5) On peut suivre l'évolution de la création du cluster avec la commande suivante:
-        watch kubectl get CephCluster -n rook-ceph
-        NAME        DATADIRHOSTPATH   MONCOUNT   AGE   PHASE   MESSAGE                        HEALTH
-        rook-ceph   /var/lib/rook     3          24h   Ready   Cluster created successfully   OK
-    6) L'opérateur Rook a aussi déployé une console d'administation du cluster Ceph. Pour faciliter l'accessibilité à cette console on créé l'entré DNS suivant dans la zone lacave.info:
-        cephdashboard.kube.lacave.info
-        et un Ingress:
-        kubectl apply -f resources/rook/dashboard-ingress-https.yaml
-    7) Lancer la commande suivante pour obtenir le mot de passe de l'utilisateur admin de la console:
-        kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o json | jq -r .data.password | base64 -d
-    8) Créer le pool CEPH.
-        kubectl apply -f resources/rook/pool.yaml
-    8) Créer le storage class.
-        kubectl apply -f resources/rook/storageclass.yaml
-
-## Ajout d'un nouveau disque
-En principe, si un nouveau disque vide est attaché à un noeud du cluster, un nouveau OSD devrait être créé automatiquement.
-Dans le cas ou la détection ne fonctionnerait pas on peut redémarrer l'opérateur en supprimant le pod avec la commmande suivante:
-    kubectl -n rook-ceph delete pod -l app=rook-ceph-operator
 
 # Troubleshooting Kubernetes
 

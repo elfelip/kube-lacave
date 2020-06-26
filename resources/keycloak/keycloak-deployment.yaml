@@ -47,31 +47,51 @@ spec:
         ports:
         - containerPort: 8080
         volumeMounts:
-        - name: login-lacave-data
+#        - name: login-lacave-data
+#          mountPath: /opt/jboss/keycloak/standalone/data
+        - name: login-lacave-ceph-data
           mountPath: /opt/jboss/keycloak/standalone/data
       securityContext:
         fsGroup: 0
         runAsNonRoot: false
         runAsUser: 0
       volumes:
-        - name: login-lacave-data
+#        - name: login-lacave-data
+#          persistentVolumeClaim:
+#            claimName: login-lacave-claim
+        - name: login-lacave-ceph-data
           persistentVolumeClaim:
-            claimName: login-lacave-claim
+            claimName: login-lacave-ceph-claim
+#---
+#kind: PersistentVolumeClaim
+#apiVersion: v1
+#metadata:
+#  name: login-lacave-claim
+#  namespace: kube-system
+#  labels:
+#    app: login-lacave
+#spec:
+#  accessModes:
+#  - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 1Gi
+#  storageClassName: local-path
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: login-lacave-claim
-  namespace: kube-system
-  labels:
-    app: login-lacave
+    name: login-lacave-ceph-claim
+    namespace: kube-system
+    labels:
+        app: login-lacave
 spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  storageClassName: local-path
+    accessModes:
+    - ReadWriteOnce
+    resources:
+        requests:
+            storage: 10Gi
+    storageClassName: rook-ceph-block
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
