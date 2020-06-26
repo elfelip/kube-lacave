@@ -43,13 +43,11 @@
   tasks:
     - name: create the 'ubuntu' user
       user: name=ubuntu append=yes state=present createhome=yes shell=/bin/bash
-
     - name: allow 'ubuntu' to have passwordless sudo
       lineinfile:
         dest: /etc/sudoers
         line: 'ubuntu ALL=(ALL) NOPASSWD: ALL'
         validate: 'visudo -cf %s'
-
     - name: set up authorized keys for the ubuntu user
       authorized_key: user=ubuntu key="{{item}}"
       with_file:
@@ -81,17 +79,16 @@
        name: docker.io
        state: present
        update_cache: true
-
    - name: install APT Transport HTTPS
      apt:
        name: apt-transport-https
        state: present
-
+       
    - name: add Kubernetes apt-key
      apt_key:
        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
        state: present
-
+       
    - name: add Kubernetes' APT repository
      apt_repository:
       repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
