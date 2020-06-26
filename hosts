@@ -1,5 +1,4 @@
 # Cette premiere ligne specifie des commandes distantes en tant qu'utilisateur root pour le Maitre et les clients
-
    [masters]
    master ansible_host=master_ip ansible_user=root
 
