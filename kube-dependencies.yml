@@ -6,6 +6,7 @@
        name: docker.io
        state: present
        update_cache: true
+       
    - name: install APT Transport HTTPS
      apt:
        name: apt-transport-https
