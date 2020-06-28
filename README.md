@@ -344,6 +344,20 @@ Pour l'utiliser:
     io:
         client:   341 B/s wr, 0 op/s rd, 0 op/s wr
 
+# Operateur Postgresql
+Crunchy Data font un opérateur permettant de créer de cluster Postegresql redondant. https://github.com/CrunchyData/postgres-operator
+
+Pour l'installer, exécuter les commandes suivantes:
+
+    kubectl create namespace pgo
+    kubectl apply -f https://raw.githubusercontent.com/CrunchyData/postgres-operator/v4.3.2/installers/kubectl/postgres-operator.yml
+
+    Une fois l'opérateur déployé, on doit avoir les pods suivants dans le namespace pgo:
+    kubectl get pods  -n pgo                
+    NAME                                 READY   STATUS      RESTARTS   AGE
+    pgo-deploy-m6wx4                     0/1     Completed   0          24h
+    postgres-operator-5d486cb469-9kkws   4/4     Running     1          24h
+
 # Configuration OpenID Connect
 
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
