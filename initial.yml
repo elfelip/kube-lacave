@@ -1,15 +1,15 @@
 - hosts: all
   become: yes
   tasks:
-    - name: create the 'ubuntu' user
-      user: name=ubuntu append=yes state=present createhome=yes shell=/bin/bash
+    - name: create the 'inspq-test' user
+      user: name=inspq-test append=yes state=present createhome=yes shell=/bin/bash
     - name: allow 'ubuntu' to have passwordless sudo
       lineinfile:
         dest: /etc/sudoers
-        line: 'ubuntu ALL=(ALL) NOPASSWD: ALL'
+        line: 'inspq-test ALL=(ALL) NOPASSWD: ALL'
         validate: "visudo -cf %s"
     - name: set up authorized keys for the ubuntu user
-      authorized_key: user=ubuntu key="{{item}}"
+      authorized_key: user=inspq-test key="{{item}}"
       with_file:
         - ~/.ssh/id_rsa.pub
    
