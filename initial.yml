@@ -3,7 +3,7 @@
   tasks:
     - name: create the 'inspq-test' user
       user: name=inspq-test append=yes state=present createhome=yes shell=/bin/bash
-    - name: allow 'ubuntu' to have passwordless sudo
+    - name: allow 'inspq-test' to have passwordless sudo
       lineinfile:
         dest: /etc/sudoers
         line: 'inspq-test ALL=(ALL) NOPASSWD: ALL'
