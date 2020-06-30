@@ -347,6 +347,7 @@ Pour l'utiliser:
 # Operateur Postgresql
 Crunchy Data font un opérateur permettant de créer de cluster Postegresql redondant. https://github.com/CrunchyData/postgres-operator
 
+## Installer l'opérateur
 Pour l'installer, exécuter les commandes suivantes:
 
     kubectl create namespace pgo
@@ -358,8 +359,83 @@ Pour l'installer, exécuter les commandes suivantes:
     pgo-deploy-m6wx4                     0/1     Completed   0          24h
     postgres-operator-5d486cb469-9kkws   4/4     Running     1          24h
 
+## Installer le client
+
+Utiliser le script setup_client.sh pour installer l'outil pgo:
+
+    resrouces/crunchy/
+
+Configurer l'environnement. Exécuter les commandes suivantes et les ajouter au ~/.bashrc
+    export PATH=${HOME}/.pgo/pgo:$PATH
+    echo "export PATH=${HOME}/.pgo/pgo:$PATH" >> ~/.bashrc
+    export PGOUSER=${HOME}/.pgo/pgo/pgouser
+    echo "export PGOUSER=${HOME}/.pgo/pgo/pgouser" >> ~/.bashrc
+    export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt
+    echo "export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt" >> ~/.bashrc
+    export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt
+    echo "export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt" >> ~/.bashrc
+    export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key
+    echo "export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key" >> ~/.bashrc
+    export PGO_APISERVER_URL=https://localhost:8443
+    echo "export PGO_APISERVER_URL=https://localhost:8443" >> ~/.bashrc
+    export PGO_NAMESPACE=pgo
+    echo "export PGO_NAMESPACE=pgo" >> ~/.bashrc
+
+Définir les infromation d'authentification:
+    echo "$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.username | base64 -d):$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.password | base64 -d)" > ${HOME?}/.pgo/pgouser
+
+Utiliser kubectl pour faire une redirection de port:
+    kubectl port-forward -n pgo svc/postgres-operator 8443:8443 &
+
+On peut tester le client en exécutant les commandes suivantes:
+    pgo test --all
+    Nothing found.
+    
+    pgo version
+    pgo client version 4.3.2
+    pgo-apiserver version 4.3.2
+
+## Créer un cluster
+
+Voici la commande pour tester le cluster testcluster utilisant rook comme stockage
+
+    pgo create cluster testcluster --storage-config=rook --pgbackrest-storage-config=rook
+    created cluster: testcluster
+    workflow id: e0a1bb2b-8ff0-4a65-90a0-45f0d00477c7
+    database name: testcluster
+    users:
+            username: testuser password: UnMotDePasseLongEtComplexeGenereAutomatiquementParLOperateur
+
+## Installer pgadmin4
+
+Sur Ubuntu:
+    # Ajouter le clé du repository
+    curl https://www.pgadmin.org/static/packages_pgadmin_org.pub | sudo apt-key add
+    # Ajouter le repository
+    sudo sh -c 'echo "deb https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list && apt update'
+    # Installer pgadmin4
+    sudo apt install pgadmin4-desktop
+
+Pour se connecter sur la BD:
+    # Lancer un port-forward
+    kubectl -n pgo port-forward svc/testcluster 5432:5432 &
+    # Se connecter sur la BD avec pgadmin à l'adresse localhost:5432
+    # On peut obtenir le nom d'utilisateur avec la commande suivante:
+    kubectl get secret -n pgo testcluster-testuser-secret -o json | jq -r .data.username | base64 -d
+    # On peut obtenir le mot de passe avecla commande suivante:
+    kubectl get secret -n pgo testcluster-testuser-secret -o json | jq -r .data.password | base64 -d
+
 # Configuration OpenID Connect
 
+## Création de la base de données
+Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par l'opérateur Crunchy
+
+    # Créer le namespace
+    pgo create namespace kcdatabases
+    # Créer le cluster de base de données et la base de données de Keycloak
+    pgo create cluster loginlacavecluster -n kcdatabases --database=keycloak --username=keycloak --password=keycloak --storage-config=rook --pgbackrest-storage-config=rook
+
+## Installation de Keycloak
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
 Lancer le manifest suivant pour créer le serveur Keycloak.
 
@@ -369,6 +445,8 @@ S'assurer que le DNS contient une entrée login.kube.lacave.info qui pointe vers
 
 Accéder ensuite au serveur Keycloak: https://login.kube.lacave.info/auth/
 S'authentifier en tant que l'utilisateur admin/admin
+
+S.V.P. Changer le mot de passe
 
 ## Création du REALM
 Pour la sécurité de Kubernetes on créé le REALM kubernetes.
@@ -452,7 +530,7 @@ Sur MacOS
     brew install int128/kubelogin/kubelogin
     sudo ln -s /usr/local/bin/kubelogin /usr/local/bin/oidc-login
 
-    Pour ajouter l'utorité de certification: https://www.eduhk.hk/ocio/content/faq-how-add-root-certificate-mac-os-x
+    Pour ajouter l'autorité de certification: https://www.eduhk.hk/ocio/content/faq-how-add-root-certificate-mac-os-x
     
 Ajouter ensuite la section suivante dans votre ficher .kube/config:
 
