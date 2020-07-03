@@ -44,24 +44,38 @@ spec:
           value: admin
         - name: PROXY_ADDRESS_FORWARDING
           value: "true"
+        - name: DB_VENDOR
+          value: postgres
+        - name: DB_ADDR
+          value: loginlacavecluster.kcdatabases
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_DATABASE
+          value: keycloak
+        - name: DB_SCHEMA
+          value: keycloak
+        - name: DB_USER
+          value: keycloak
+        - name: DB_PASSWORD
+          value: keycloak
         ports:
         - containerPort: 8080
-        volumeMounts:
+#        volumeMounts:
 #        - name: login-lacave-data
 #          mountPath: /opt/jboss/keycloak/standalone/data
-        - name: login-lacave-ceph-data
-          mountPath: /opt/jboss/keycloak/standalone/data
+#        - name: login-lacave-ceph-data
+#          mountPath: /opt/jboss/keycloak/standalone/data
       securityContext:
         fsGroup: 0
         runAsNonRoot: false
         runAsUser: 0
-      volumes:
+#      volumes:
 #        - name: login-lacave-data
 #          persistentVolumeClaim:
 #            claimName: login-lacave-claim
-        - name: login-lacave-ceph-data
-          persistentVolumeClaim:
-            claimName: login-lacave-ceph-claim
+#        - name: login-lacave-ceph-data
+#          persistentVolumeClaim:
+#            claimName: login-lacave-ceph-claim
 #---
 #kind: PersistentVolumeClaim
 #apiVersion: v1

@@ -22,7 +22,7 @@ spec:
           - --listen=0.0.0.0:3000
           - --discovery-url=https://login.kube.lacave.info/auth/realms/kubernetes
           - --client-id=kubelacave
-          - --client-secret=LeSecretGenereParKeycloak
+          - --client-secret=LeClientSecretGenereParKeycloak
           - --redirection-url=https://dashboard.kube.lacave.info
           - --enable-refresh-tokens=true
           - --encryption-key=673ff5f9ea254d0ea89dc3cc0d8ea26a    # 32 bytes string
