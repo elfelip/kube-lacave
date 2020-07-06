@@ -25,7 +25,7 @@ metadata:
     app: login-lacave
 spec:
   serviceName: login-lacave
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: login-lacave
@@ -34,9 +34,11 @@ spec:
       labels:
         app: login-lacave
     spec:
+      imagePullSecrets:
+      - name: regcred
       containers:
       - name: keycloak
-        image: jboss/keycloak:latest
+        image: docker.lacave.info/keycloak:10.0.2
         env:
         - name: KEYCLOAK_USER
           value: admin
@@ -58,6 +60,12 @@ spec:
           value: keycloak
         - name: DB_PASSWORD
           value: keycloak
+        - name: JGROUPS_DISCOVERY_PROTOCOL
+          value: JDBC_PING
+#        - name: JGROUPS_DISCOVERY_PROTOCOL
+#          value: dns.DNS_PING
+#        - name: JGROUPS_DISCOVERY_PROPERTIES
+#          value: "dns_query=login-lacave.kube-system.svc.cluster.lacave"
         ports:
         - containerPort: 8080
 #        volumeMounts:
