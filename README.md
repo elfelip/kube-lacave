@@ -344,6 +344,45 @@ Pour l'utiliser:
     io:
         client:   341 B/s wr, 0 op/s rd, 0 op/s wr
 
+# Dépot Nexus
+Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
+Pour le déployer, utiliser le manifest suivant:
+
+    kubectl apply -f resources/nexus/nexus-deployment.yml
+
+Le serveur nexus est accessible par l'URL https://nexus.lacave.info
+Le dépôt d'images de conteneurs est docker.lacave.info
+
+# Authentification au registre Docker du Nexus
+
+Suivre les étapes suivantes pour créer un secret utilisable par Kubernetes pour s'authentifier auprès du registre Docker du serveur Nexus:
+Référence: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+
+S'authentifier au registre Docker du Nexus si ce n'est pas déjà fait:
+
+    docker login docker.lacave.info
+
+Vérifier que le ficher de config Docker pour identifier les informations d'authentification:
+
+    cat ~/.docker/config.json 
+{
+	"auths": {
+		"docker.lacave.info": {
+			"auth": "LeSecretEstDansLaSauce"
+		},
+		"https://index.docker.io/v1/": {
+			"auth": "LeSecretEstDansLaSauce"
+		}
+	}
+}
+
+Créer le secret dans Kubernetes:
+
+    kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n kube-system
+    kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n default
+
+Ce secret doit être créé dans chacun des Namespace qui utilise le registre privé.
+
 # Operateur Postgresql
 Crunchy Data font un opérateur permettant de créer de cluster Postegresql redondant. https://github.com/CrunchyData/postgres-operator
 
@@ -434,6 +473,12 @@ Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par 
     pgo create namespace kcdatabases
     # Créer le cluster de base de données et la base de données de Keycloak
     pgo create cluster loginlacavecluster -n kcdatabases --database=keycloak --username=keycloak --password=keycloak --storage-config=rook --pgbackrest-storage-config=rook
+
+## Créer l'image Keycloak avec les scripts supportant le clustering.
+Pour mettre Keycloak en cluster, on utilise le protocol JDBC_PING pour le Jgroups. Pour ce faire, des scripts doivent être ajouté à l'image de base de Keycloak. Ces scripts sont inclus dans le présen projet, pour créer l'image Keycloak, lancer les commmandes suivantes:
+
+    docker build --tag docker.lacave.info/keycloak:10.0.2 resources/keycloak/image/
+    docker push docker.lacave.info/keycloak:10.0.2
 
 ## Installation de Keycloak
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
@@ -586,44 +631,6 @@ La première étape est de se connecter au serveur Keycloak et de créer les rô
 On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace default en exécutant le manifest suivant:
     kubectl apply -f resources/multitenants-default-role-bindings.yaml
 
-# Dépot Nexus
-Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
-Pour le déployer, utiliser le manifest suivant:
-
-    kubectl apply -f resources/nexus/nexus-deployment.yml
-
-Le serveur nexus est accessible par l'URL https://nexus.lacave.info
-Le dépôt d'images de conteneurs est docker.lacave.info
-
-# Authentification au registre Docker du Nexus
-
-Suivre les étapes suivantes pour créer un secret utilisable par Kubernetes pour s'authentifier auprès du registre Docker du serveur Nexus:
-Référence: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-
-S'authentifier au registre Docker du Nexus si ce n'est pas déjà fait:
-
-    docker login docker.lacave.info
-
-Vérifier que le ficher de config Docker pour identifier les informations d'authentification:
-
-    cat ~/.docker/config.json 
-{
-	"auths": {
-		"docker.lacave.info": {
-			"auth": "LeSecretEstDansLaSauce"
-		},
-		"https://index.docker.io/v1/": {
-			"auth": "LeSecretEstDansLaSauce"
-		}
-	}
-}
-
-Créer le secret dans Kubernetes:
-
-    kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n kube-system
-    kubectl create secret generic regcred --from-file=.dockerconfigjson=${HOME}/.docker/config.json --type=kubernetes.io/dockerconfigjson -n default
-
-Ce secret doit être créé dans chacun des Namespace qui utilise le registre privé.
 
 
 # Ajouter un noeud au cluster
@@ -698,14 +705,70 @@ On devrait avoir l'état final suivant:
     kube03   Ready    master   20d     v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube03,kubernetes.io/os=linux,node-role.kubernetes.io/master=
     kube04   Ready    worker   7m28s   v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disktype=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube04,kubernetes.io/os=linux,node-role.kubernetes.io/worker=worker
 
-# Istio
+# Mettre à jour le cluster
+La méthode décrite dans ce guide est la mise à jour gracieuse (Graceful). Elle permet de mettre à jour le cluster tout en gardant les applications disponibles.
+Dans ce document, je présente un mise à jour minueure qui fait passer le cluster de la version 1.18.2 à 1.18.5.
+
+    Se connecter sur le serveur de gestion Ansible.
+    Se déplacer dans le projet kube-lacave et mettre à jour le projet
+        git pull
+    Se déplacer dans le sous-projet kubespray et faire un chackout de la branche master
+        gir checkout master
+    S'assurer d'avoir le remote upstream de configuré sur le dépôt git officiel de kubespray
+        git remote -v
+    Sinon, l'ajouter
+        git remote add upstream https://github.com/kubernetes-sigs/kubespray.git
+    Mettre à jour la branche master à partir du upstream
+        git pull upstream master
+    Pousser les mises à jour dans la branche master de votre fork
+        git push origin master
+    Retourner dans le répertoire du proket kube-lacave et lancer le playbook upgrade-cluster.yml
+        ansible-playbook -i inventory/lacave/inventory.ini kubespray/upgrade-cluster.yml -e kube_version=v1.18.5
+    On peut suivre l'évolution de la mise à jour avec la commande suivante:
+        kubectl get nodes
+        NAME     STATUS                     ROLES    AGE   VERSION
+        kube01   Ready                      master   27d   v1.18.5
+        kube02   Ready,SchedulingDisabled   worker   27d   v1.18.2
+        kube03   Ready                      master   27d   v1.18.5
+        kube04   Ready                      worker   27d   v1.18.2        
+    une fois la mise à jour terminée, on devrait avoir le résultat suivant:
+    kubectl get nodes
+    NAME     STATUS   ROLES    AGE   VERSION
+    kube01   Ready    master   28d   v1.18.5
+    kube02   Ready    worker   28d   v1.18.5
+    kube03   Ready    master   28d   v1.18.5
+    kube04   Ready    worker   27d   v1.18.5
+    Mettre à jour l'inventaire pour partir avec cette version la prochaine fois qu'on utilise le playbook cluster.yml
+    Ficher inventory/lacave/group_vars/k8s-cluster/k8s-cluster.yml:
+        kube_version: v1.18.5
+
+En cas de problème lors de la mise a jour d'un noeud, on peut corriger le situation et lancer de nouveau la mise à jour.
+Il faut remettre en marche les noeud qui étati en cours de mise à jour avec les commandes suivantes:
+    kubectl get nodes
+    NAME     STATUS                     ROLES    AGE   VERSION
+    kube01   Ready                      master   27d   v1.18.5
+    kube02   Ready,SchedulingDisabled   worker   27d   v1.18.2
+    kube03   Ready                      master   27d   v1.18.5
+    kube04   Ready                      worker   27d   v1.18.2
+    kubectl uncordon kube02
+    kubectl get nodes
+    NAME     STATUS   ROLES    AGE   VERSION
+    kube01   Ready    master   27d   v1.18.5
+    kube02   Ready    worker   27d   v1.18.2
+    kube03   Ready    master   27d   v1.18.5
+    kube04   Ready    worker   27d   v1.18.2
+
+Quand j'ai fait le test, istio était déployé et la mise à jour n'a pas pu se faire sur tous les noeuds. J'ai supprimé istio et la mise à jour a bien fonctionné.
+Ce sera à creuser dans la section service mesh.
+
+# Service Mesh: Istio
 Cette partie décrit comment déployer le Service Mesh Istio dans le cluster.
 
 ## Pré-requis
 Pour une maximum de conrôle, on doit installer les composants suivants avant de déployer Istio.
 
 Restreindre l'exécution du ingress nginx pour pouvoir utiliser l'ingress de istio.
-On va ajouter un label ingress-type sur chacun des noeuds pour avoir le ingress nginx sur lube01 et kube02 et le ingress istion sur kube03 et kube04
+On va ajouter un label ingress-type sur chacun des noeuds pour avoir le ingress nginx sur lube01 et kube02 et le ingress istio sur kube03 et kube04
 
     kubectl label nodes kube01 kube02 ingress-type=nginx
     kubectl label nodes kube03 kube04 ingress-type=istio
@@ -730,7 +793,7 @@ Voici les instructions pour le déployer à partir du premier noeud maitre du cl
     Déployer le profil par défaut:
         istioctl install --set profile=demo
 
-Une fois le déploiement tereminé, on peut ajouter le nodeSelector dans le déploiement du ingress istio
+Une fois le déploiement terminé, on peut ajouter le nodeSelector dans le déploiement du ingress istio
 
 Modifier le deployment:
     kubectl -n istio-system edit deployment istio-ingressgateway
@@ -747,7 +810,7 @@ Ajouter la section suivante dans la partie spec.template.containers[0].affinity
               - key: ingress-type
                 operator: In
                 values:
-                - istio    nodeSelector:
+                - istio
 
 On peut ajouter une adresse IP au Istio Ingress Gateway.
 Modifier le gateway:
