@@ -761,6 +761,36 @@ Il faut remettre en marche les noeud qui étati en cours de mise à jour avec le
 Quand j'ai fait le test, istio était déployé et la mise à jour n'a pas pu se faire sur tous les noeuds. J'ai supprimé istio et la mise à jour a bien fonctionné.
 Ce sera à creuser dans la section service mesh.
 
+# Monitoring
+La solution la plus populaire pour la surveillance d'un cluster Kubernetes est la combinaison Prometheus et Grafana.
+Pour faciliter la gestion du monitoring on utilise l'opérateur prometheus de CoreOS disonible sur Github: https://github.com/coreos/kube-prometheus
+
+Cloner le dépôt git:
+    git clone https://github.com/coreos/kube-prometheus.git
+Déployer l'opérateur:
+    cd kube-prometheus
+    kubectl create -f manifests/setup
+    until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
+    kubectl create -f manifests/
+
+
+## Node exporter
+On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
+On ajoute certains composants comme le node exporter permettant de monitorer les noeuds du cluster Kubernetes.
+
+Créer le namespace
+    kubectl apply - resources/monitoring/monitoring-deployment.yml
+
+Ajouter le repo stable
+    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+Installer le node exporter
+    helm install -n monitoring node-exporter stable/prometheus-node-exporter
+
+## Configuration de Grafana
+
+On peut ajouter un dashboard pour le node exporter: https://grafana.com/api/dashboards/1860/revisions/20/download
+
+
 # Service Mesh: Istio
 Cette partie décrit comment déployer le Service Mesh Istio dans le cluster.
 
@@ -834,22 +864,6 @@ Les consoles disponibles sont:
     kiali       Open Kiali web UI
     prometheus  Open Prometheus web UI
     zipkin      Open Zipkin web UI
-
-## Node exporter
-On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
-On ajoute certains composants comme le node exporter permettant de monitorer les noeuds du cluster Kubernetes.
-
-Créer le namespace
-    kubectl apply - resources/monitoring/monitoring-deployment.yml
-
-Ajouter le repo stable
-    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
-Installer le node exporter
-    helm install -n monitoring node-exporter stable/prometheus-node-exporter
-
-## Configuration de Grafana
-
-On peut ajouter un dashboard pour le node exporter: https://grafana.com/api/dashboards/1860/revisions/20/download
 
 
 # Troubleshooting Kubernetes
