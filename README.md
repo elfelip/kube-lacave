@@ -405,23 +405,23 @@ Utiliser le script setup_client.sh pour installer l'outil pgo:
     resrouces/crunchy/
 
 Configurer l'environnement. Exécuter les commandes suivantes et les ajouter au ~/.bashrc
-    export PATH=${HOME}/.pgo/pgo:$PATH
-    echo "export PATH=${HOME}/.pgo/pgo:$PATH" >> ~/.bashrc
-    export PGOUSER=${HOME}/.pgo/pgo/pgouser
-    echo "export PGOUSER=${HOME}/.pgo/pgo/pgouser" >> ~/.bashrc
-    export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt
-    echo "export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt" >> ~/.bashrc
-    export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt
-    echo "export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt" >> ~/.bashrc
-    export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key
-    echo "export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key" >> ~/.bashrc
-    export PGO_APISERVER_URL=https://localhost:8443
-    echo "export PGO_APISERVER_URL=https://localhost:8443" >> ~/.bashrc
-    export PGO_NAMESPACE=pgo
-    echo "export PGO_NAMESPACE=pgo" >> ~/.bashrc
+export PATH=${HOME}/.pgo/pgo:$PATH
+echo "export PATH=${HOME}/.pgo/pgo:$PATH" >> ~/.bashrc
+export PGOUSER=${HOME}/.pgo/pgo/pgouser
+echo "export PGOUSER=${HOME}/.pgo/pgo/pgouser" >> ~/.bashrc
+export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt
+echo "export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt" >> ~/.bashrc
+export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt
+echo "export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt" >> ~/.bashrc
+export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key
+echo "export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key" >> ~/.bashrc
+export PGO_APISERVER_URL=https://localhost:8443
+echo "export PGO_APISERVER_URL=https://localhost:8443" >> ~/.bashrc
+export PGO_NAMESPACE=pgo
+echo "export PGO_NAMESPACE=pgo" >> ~/.bashrc
 
 Définir les infromation d'authentification:
-    echo "$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.username | base64 -d):$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.password | base64 -d)" > ${HOME?}/.pgo/pgouser
+echo "$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.username | base64 -d):$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.password | base64 -d)" > ${HOME?}/.pgo/pgouser
 
 Utiliser kubectl pour faire une redirection de port:
     kubectl port-forward -n pgo svc/postgres-operator 8443:8443 &
@@ -475,10 +475,10 @@ Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par 
     pgo create cluster loginlacavecluster -n kcdatabases --database=keycloak --username=keycloak --password=keycloak --storage-config=rook --pgbackrest-storage-config=rook
 
 ## Créer l'image Keycloak avec les scripts supportant le clustering.
-Pour mettre Keycloak en cluster, on utilise le protocol JDBC_PING pour le Jgroups. Pour ce faire, des scripts doivent être ajouté à l'image de base de Keycloak. Ces scripts sont inclus dans le présen projet, pour créer l'image Keycloak, lancer les commmandes suivantes:
+Pour mettre Keycloak en cluster, on utilise le protocol JDBC_PING pour le Jgroups. Pour ce faire, des scripts doivent être ajouté à l'image de base de Keycloak. Ces scripts sont inclus dans le présent projet, pour créer l'image Keycloak, lancer les commmandes suivantes:
 
-    docker build --tag docker.lacave.info/keycloak:10.0.2 resources/keycloak/image/
-    docker push docker.lacave.info/keycloak:10.0.2
+    docker build --tag docker.lacave.info/lacave/keycloak:10.0.2 resources/keycloak/image/
+    docker push docker.lacave.info/lacave/keycloak:10.0.2
 
 ## Installation de Keycloak
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.

@@ -38,7 +38,7 @@ spec:
       - name: regcred
       containers:
       - name: keycloak
-        image: docker.lacave.info/keycloak:10.0.2
+        image: docker.lacave.info/lacave/keycloak:10.0.2
         env:
         - name: KEYCLOAK_USER
           value: admin
