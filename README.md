@@ -256,7 +256,7 @@ Cert-manager peut créer des certificats en utilisant une autoirité de certific
 Après l'installation de Kubespray avec l'inventaire actuel, seul le stockage local est disponible. Ce stockage n'est ni portable d'un noeud à l'autre ni redontant. 
 
 ## Stockage Ceph avec l'opérateur Rook
-Pour ajouter la redondance au niveau du stokcage on va installer l'opérateur CEPH rook: https://rook.io
+Pour ajouter la redondance au niveau du stockage on va installer l'opérateur CEPH rook: https://rook.io
 
 Cet opérateur scrute continuellement les noeuds du cluster Kubernetes et détecte automatiquement les nouveau disques qui y sont attachés. Si les disques sont vides, il va automatiquement l'ajouter au cluster.
 
