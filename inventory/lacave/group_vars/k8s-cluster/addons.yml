@@ -31,6 +31,10 @@ local_path_provisioner_image_tag: "v0.0.2"
 # Local volume provisioner deployment
 local_volume_provisioner_enabled: false
 # local_volume_provisioner_namespace: kube-system
+# local_volume_provisioner_nodelabels:
+#   - kubernetes.io/hostname
+#   - topology.kubernetes.io/region
+#   - topology.kubernetes.io/zone
 # local_volume_provisioner_storage_classes:
 #   local-storage:
 #     host_dir: /mnt/disks
@@ -101,7 +105,45 @@ ingress_nginx_secure_port: 443
 # ingress_nginx_extra_args:
 #   - --default-ssl-certificate=default/foo-tls
 
+# ambassador ingress controller deployment
+ingress_ambassador_enabled: false
+# ingress_ambassador_namespace: "ambassador"
+# ingress_ambassador_version: "*"
+
+# ALB ingress controller deployment
+ingress_alb_enabled: false
+# alb_ingress_aws_region: "us-east-1"
+# alb_ingress_restrict_scheme: "false"
+# Enables logging on all outbound requests sent to the AWS API.
+# If logging is desired, set to true.
+# alb_ingress_aws_debug: "false"
+
+
 # Cert manager deployment
 cert_manager_enabled: false
 #cert_manager_enabled: true
 #cert_manager_namespace: "cert-manager"
+
+# MetalLB deployment
+metallb_enabled: false
+# metallb_ip_range:
+#   - "10.5.0.50-10.5.0.99"
+# metallb_version: v0.9.3
+# metallb_protocol: "layer2"
+# metallb_port: "7472"
+# metallb_limits_cpu: "100m"
+# metallb_limits_mem: "100Mi"
+# metallb_additional_address_pools:
+#   kube_service_pool:
+#     ip_range:
+#       - "10.5.1.50-10.5.1.99"
+#     protocol: "layer2"
+#     auto_assign: false
+# metallb_protocol: "bgp"
+# metallb_peers:
+#   - peer_address: 192.0.2.1
+#     peer_asn: 64512
+#     my_asn: 4200000000
+#   - peer_address: 192.0.2.2
+#     peer_asn: 64513
+#     my_asn: 4200000000
