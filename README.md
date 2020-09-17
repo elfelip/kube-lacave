@@ -245,7 +245,7 @@ Le contexte par défaut est kubernetes-admin@labo.inspq. On peut spécifier le c
 ## Installation cert-manager
 Cert Manager peut être installé par kubespray mais la version déployé semble limité.
 On peut en installer un version plus récente avec la commande suivante:
-    kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.15.0/cert-manager.yaml
+    kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.0.1/cert-manager.yaml
 
 ## Création de l'émetteur de certificat SelfSigned pour lacave
 Cert-manager peut créer des certificats en utilisant une autoirité de certification selfsigned. Pour créer cet émetteur au niveau du cluster, exécuter le manifest suivant:
@@ -343,6 +343,9 @@ Pour l'utiliser:
     
     io:
         client:   341 B/s wr, 0 op/s rd, 0 op/s wr
+On peut créer l'alias suivant pour facluiliter l'utilisation du toolbox.
+    alias ceph-toolbox='kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath="{.items[0].metadata.name}") bash'
+Ajouter cette lign dans votre fichier ~/.bashrc pour que l'alias soit toujours disponible.
 
 # Dépot Nexus
 Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
@@ -763,7 +766,9 @@ Ce sera à creuser dans la section service mesh.
 
 # Monitoring
 La solution la plus populaire pour la surveillance d'un cluster Kubernetes est la combinaison Prometheus et Grafana.
-Pour faciliter la gestion du monitoring on utilise l'opérateur prometheus de CoreOS disonible sur Github: https://github.com/coreos/kube-prometheus
+
+## Première possibilité: Kube-prometheus de CoreOS
+Pour faciliter la gestion du monitoring on peut utilise l'opérateur prometheus de CoreOS disonible sur Github: https://github.com/coreos/kube-prometheus
 
 Cloner le dépôt git:
     git clone https://github.com/coreos/kube-prometheus.git
@@ -774,7 +779,7 @@ Déployer l'opérateur:
     kubectl create -f manifests/
 
 
-## Node exporter
+### Node exporter
 On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
 On ajoute certains composants comme le node exporter permettant de monitorer les noeuds du cluster Kubernetes.
 
@@ -786,10 +791,32 @@ Ajouter le repo stable
 Installer le node exporter
     helm install -n monitoring node-exporter stable/prometheus-node-exporter
 
-## Configuration de Grafana
+### Configuration de Grafana
 
 On peut ajouter un dashboard pour le node exporter: https://grafana.com/api/dashboards/1860/revisions/20/download
 
+## Deuxième possibilité, utiliser une charte helm
+On utilise la charte helm kube-prometheus pour déployer l'opérateur Prometheus.
+
+Ajouter le repository à votre installation de Helm
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+    helm repo update
+Créer le namespace monitoring
+    kubectl create namespace monitoring
+Installer la charte en utilisant les personnalisation de ce projet:
+    helm install -f resources/monitoring/kube-prometheus-stack.yaml lacave-prom prometheus-community/kube-prometheus-stack
+
+# Visibilité
+Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
+
+Pour instller Weavescope, utiliser la commande suivante:
+    kubectl apply -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+Pour accéder à l'interface:
+    kubectl port-forward svc/weave-scope-app 4040:80 -n weave
+
+L'URL est alors http://localhost:4040
 
 # Service Mesh: Istio
 Cette partie décrit comment déployer le Service Mesh Istio dans le cluster.
@@ -868,6 +895,57 @@ Les consoles disponibles sont:
 
 # Troubleshooting Kubernetes
 
+## Supprimer un namespace dans l'état Terminating
+Il arrive, lorsqu'on tente de supprimer un namespace, qu'il reste en mode Terminating. Suivre la procédure suivante pour le supprimer:
+
+Lancer une proixy vers le serveur API:
+    kubectl proxy &
+Lancer la commande suivante pour faire un poste sur le endpoint finalize du nampespace:
+    NS=nomdunamepsaceaeffacer; kubectl get ns ${NS} -o json | jq '.spec.finalizers=[]' | curl -X PUT http://localhost:8001/api/v1/namespaces/${NS}/finalize -H "Content-Type: application/json" --data @-
+
+## Espace dique plein dans un pvc rook cepth
+
+Le pire c'est de trouver. On peut monitorer les volumes directement sur les hosts Linux.
+
+    df -h | grep rbd
+    /dev/rbd0        1.0G  1024M  1.0G  100% /var/lib/kubelet/pods/a0f66ee9-2ad4-471c-88a8-ea7fb2c8e4c5/volumes/kubernetes.io~csi/pvc-4a0447ec-15f8-4232-8679-625f0f47be5a/mount
+    /dev/rbd1       1014M   49M  966M   5% /var/lib/kubelet/pods/00db4f27-d730-4acf-a70a-d12c26f6aa18/volumes/kubernetes.io~csi/pvc-a5583652-c700-4074-b03b-843d215a517f/mount
+
+Si on veut savoir quel est l'image Ceph qui contient le volume, exécuter la commande suivante en utiliant le nom du pvc:
+    kubectl get pv pvc-4a0447ec-15f8-4232-8679-625f0f47be5a --all-namespaces -o json | jq .spec.csi.volumeHandle
+    "0001-0009-rook-ceph-0000000000000001-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5"
+Lancer le ceph-toolbox en utilisant l'alias créé à l'installation du pod.
+    ceph-toolbox
+ou
+    kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath="{.items[0].metadata.name}") bash
+Faire la liste des images du pool replicapool.
+    rbd ls replicapool
+    csi-vol-29c60437-b7ab-11ea-960f-565d092d059c
+    csi-vol-2b906d13-b704-11ea-960f-565d092d059c
+    csi-vol-7d5466b1-bafd-11ea-983c-8a2468105cfd
+    csi-vol-7dba1fe6-bafd-11ea-983c-8a2468105cfd
+    csi-vol-8f2ab8c6-bb09-11ea-983c-8a2468105cfd
+    csi-vol-8f80acde-bb09-11ea-983c-8a2468105cfd
+    csi-vol-bbab5eda-b7b4-11ea-960f-565d092d059c
+    csi-vol-c6648a55-f3a1-11ea-a061-127158aa3afa
+    csi-vol-d0a57ebb-f3a1-11ea-a061-127158aa3afa
+    csi-vol-e9789cb6-f39e-11ea-a061-127158aa3afa
+    csi-vol-eab8607d-f39e-11ea-a061-127158aa3afa
+    csi-vol-f4d2a962-b703-11ea-960f-565d092d059c
+    csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5
+    csi-vol-f661f514-ebd0-11ea-a3c6-2a04d02621a5
+Dans notre cas, le volume en problème correspond à l'image Ceph csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5
+On peut obtenir plus d'information sur l'image rbd avec la commande suivante:
+    rbd info replicapool/csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5
+
+Pour grossir le volume, ca se fait en deux étapes:
+    1) Dans le toolbox, grossir l'image avec la commande suivante:
+        rbd resize csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5 --size=2G --pool=replicapool
+    2) Sur l'hôte Linux, grossir le système de fichier
+        xfs_growfs /var/lib/kubelet/pods/a0f66ee9-2ad4-471c-88a8-ea7fb2c8e4c5/volumes/kubernetes.io~csi/pvc-4a0447ec-15f8-4232-8679-625f0f47be5a/mount
+Il faut donc monitorer les espaces disques directement sur les hôtes Linux
+
+## Réseau
 Calico (réseau):
     export ETCD_KEY_FILE=/etc/calico/certs/key.pem
     export ETCD_CERT_FILE=/etc/calico/certs/cert.crt 
