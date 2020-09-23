@@ -123,6 +123,142 @@ Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave
     ssh root@kube03 mkdir -p /etc/kubernetes/ssl
     scp resources/cert/lacave-root.pem root@kube03:/etc/kubernetes/ssl
 
+# Préparation de l'inventaire Ansible de Kubespray
+
+La configuration du cluster est décrite dans l'inentaire Ansible de Kubespray qui est dans le répertoire inventory/lacave de ce projet.
+
+## Configurations des noeuds
+On spécifie à Kubespray les noeuds à déployer dans le fichier principal de l'inventaire inventory.ini
+
+    # ## Configure 'ip' variable to bind kubernetes services on a
+    # ## different ip than the default iface
+    # ## We should set etcd_member_name for etcd cluster. The node that is not a etcd member do not need to set the value, or can set the empty string value.
+    [all]
+    kube01
+    kube02
+    kube03
+    kube04
+    # ## configure a bastion host if your nodes are not directly reachable
+    # bastion ansible_host=x.x.x.x ansible_user=some_user
+
+    [kube-master]
+    kube01
+    kube03
+
+    [etcd]
+    kube01
+    kube02
+    kube03
+
+    [kube-node]
+    kube01
+    kube02
+    kube03
+    kube04
+
+    [calico-rr]
+
+    [k8s-cluster:children]
+    kube-master
+    kube-node
+    calico-rr
+
+Les configurations spécifiques à chaque noeuds sont dans les fichiers ru répertoire inventory/hosts_vars
+
+## Choix de la version de Kubernetes
+
+Pour spécifier la version de Kubernetes à déployer on modifi la variable suivante du fichier group_vars/k8s-cluster/k8s-cluster.yml
+
+    kube_version: v1.19.1
+
+## Options d'authentification OpenID Connect pour le serveur API
+
+Pour configurer l'authentification OpenID Connect du cluster, on modifie les variables suivante du fichier group_vars/k8s-cluster/k8s-cluster.yml.
+
+    kube_oidc_url: URL de base de votre serveur OpenID Connect
+    kube_oidc_client_id: Client ID qui ser créé plus loin dans ce document
+    ## Optional settings for OIDC
+    kube_oidc_ca_file: Fichier de certificat de confiance
+    kube_oidc_username_claim: preferred_username
+    kube_oidc_username_prefix: 'oidc:'
+    kube_oidc_groups_claim: groups
+    kube_oidc_groups_prefix: 'oidc:'
+
+Pour kube-lacave on a les paramètres suivants:
+    kube_oidc_url: https://login.kube.lacave.info/auth/realms/kubernetes
+    kube_oidc_client_id: kubelacave
+    ## Optional settings for OIDC
+    kube_oidc_ca_file: "{{ kube_cert_dir }}/lacave-root.pem"
+    kube_oidc_username_claim: preferred_username
+    kube_oidc_username_prefix: 'oidc:'
+    kube_oidc_groups_claim: groups
+    kube_oidc_groups_prefix: 'oidc:'
+
+On peut appliquer cette configuration à un nouveau cluster même si le serveur Keycloak en question doit être hébergé dessus et n'existe nécessairement pas. L'authentification par certificat est activé par défaut pa Kubespray et c'est la méthode utilisé par l'outil kubectl.
+
+## Composants supplémentaires
+
+On peut activer le déploiement de certains composants optionnels par Kubespray en ajustant des variables dans le fichier k8s-cluster/addons.yml
+
+Les sections suivantes décrivent les composants qu'on a utilisés dans ce projet mais il y a d'autres composants qui peuvent être déployés et pris en charge par Kubespray.
+
+### Kubernetes dashboard
+On peut activer le dashboard avec la variable suivante:
+    dashboard_enabled: true
+
+### Helm deployment
+On peut déployer les composants nécessaires à l'utilisation de helm avec la variable suivante:
+    helm_enabled: true
+
+### Registry deployment
+Kuberspary peut déployer une registre d'images de conteneurs. Les options pour le registre docker interne son les suivantes:
+    registry_enabled: true
+    registry_namespace: kube-system
+    registry_storage_class: "local-path"
+    registry_disk_size: "10Gi"
+
+### Rancher Local Path Provisioner
+Pour déployer Racher permettant de gérer l'allocation de volume locaux sur les noeuds du cluster, on utilise les variables suivantes:
+    local_path_provisioner_enabled: true
+    local_path_provisioner_namespace: "local-path-storage"
+    local_path_provisioner_storage_class: "local-path"
+    local_path_provisioner_reclaim_policy: Delete
+    local_path_provisioner_claim_root: /opt/local-path-provisioner/
+    local_path_provisioner_debug: false
+    local_path_provisioner_image_repo: "rancher/local-path-provisioner"
+    local_path_provisioner_image_tag: "v0.0.2"
+
+### Nginx ingress controller deployment
+Voici les options pour le déploiement du Ingress NGINX. C'est ce composant qu'on utilie principalelement dans ce projet pour exposer les applications qui sont déployés dans le cluster Kubernetes.
+    ingress_nginx_enabled: true
+    ingress_nginx_host_network: true
+    ingress_publish_status_address: ""
+    # ingress_nginx_nodeselector:
+    #   beta.kubernetes.io/os: "linux"
+    # ingress_nginx_tolerations:
+    #   - key: "node-role.kubernetes.io/master"
+    #     operator: "Equal"
+    #     value: ""
+    #     effect: "NoSchedule"
+    ingress_nginx_namespace: "ingress-nginx"
+    ingress_nginx_insecure_port: 80
+    ingress_nginx_secure_port: 443
+    # ingress_nginx_configmap:
+    #   map-hash-bucket-size: "128"
+    #   ssl-protocols: "SSLv2"
+    # ingress_nginx_configmap_tcp_services:
+    #   9000: "default/example-go:8080"
+    # ingress_nginx_configmap_udp_services:
+    #   53: "kube-system/coredns:53"
+    # ingress_nginx_extra_args:
+    #   - --default-ssl-certificate=default/foo-tls
+
+### Cert manager deployment
+On pourrait laisser Kubespray déployer le cert-manager mais avec les version expérimentés dans ce projet, il n'a pas été possible de déployer un cert-manager fonctionnels. Il est donc désactivé à ce niveau. Une section plus loin dans le document explique comment le déployer
+    cert_manager_enabled: false
+    #cert_manager_enabled: true
+    #cert_manager_namespace: "cert-manager"
+
 # Installation du Cluster
 
 S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de déploiement du cluster:
@@ -567,6 +703,7 @@ Créer le cluster role binding pour OIDC
 
     kubectl apply -f resources/keycloak/oidc-cluster-admin-role-binding.yaml
 
+
 ## Configuration du client Kubectl pour OpenID Connect
 Installer Kubelogin (dans ~/bin pour un utilisateur norma, dans /usr/local/bin pour une installation globale)
     cd ~/bin # ou cd /usr/local/bin
@@ -764,6 +901,20 @@ Il faut remettre en marche les noeud qui étati en cours de mise à jour avec le
 Quand j'ai fait le test, istio était déployé et la mise à jour n'a pas pu se faire sur tous les noeuds. J'ai supprimé istio et la mise à jour a bien fonctionné.
 Ce sera à creuser dans la section service mesh.
 
+## Mise à jour majeure
+Voici les étapes prises pour mettre à jour le cluster de 1.18.5 vers 1.19.1
+
+Utiliser les mêmes étapes que pour la mise à jour majeure pour mettre à jour Kubespray
+S'assurer que tous les noeuds du cluster sont Ready:
+    kubectl get nodes
+    NAME     STATUS   ROLES    AGE   VERSION
+    kube01   Ready    master   99d   v1.18.5
+    kube02   Ready    worker   99d   v1.18.5
+    kube03   Ready    master   99d   v1.18.5
+    kube04   Ready    worker   99d   v1.18.5
+Pour mettre à jour le cluster, lancer la commande suivante à partir du serveur de gestion Ansible.
+    ansible-playbook -i inventory/lacave/inventory.ini kubespray/upgrade-cluster.yml -e kube_version=v1.19.1
+    
 # Monitoring
 La solution la plus populaire pour la surveillance d'un cluster Kubernetes est la combinaison Prometheus et Grafana.
 
