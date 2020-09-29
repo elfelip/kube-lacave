@@ -24,7 +24,7 @@ metadata:
   labels:
     app: login-lacave
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: login-lacave
@@ -63,6 +63,24 @@ spec:
           value: JDBC_PING
         ports:
         - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+          failureThreshold: 1
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+          failureThreshold: 30
+          periodSeconds: 10
       securityContext:
         fsGroup: 0
         runAsNonRoot: false

@@ -605,6 +605,14 @@ Pour se connecter sur la BD:
 
 # Configuration OpenID Connect
 
+Pour pouvoir utiliser l'authentification OpenID Connect avec le kubeAPI, on doit avoir confiuguré le cluster en lui fournissant les informations nécessaire: URL du serveur Keycloak, client ID etc.
+On a décrit, au début de ce document, comment le faire avec Kubespray.
+
+Pour minkube, utiliser les informations sur la page suivante:
+    https://minikube.sigs.k8s.io/docs/tutorials/openid_connect_auth/
+
+Pour microk8s: J'ai pas trouvé mais ca doit ressembler à minikube.
+
 ## Création de la base de données
 Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par l'opérateur Crunchy
 
@@ -1054,7 +1062,9 @@ Lancer une proixy vers le serveur API:
 Lancer la commande suivante pour faire un poste sur le endpoint finalize du nampespace:
     NS=nomdunamepsaceaeffacer; kubectl get ns ${NS} -o json | jq '.spec.finalizers=[]' | curl -X PUT http://localhost:8001/api/v1/namespaces/${NS}/finalize -H "Content-Type: application/json" --data @-
 
-## Espace dique plein dans un pvc rook cepth
+## Diagnostique stockage rook-ceph
+
+### Espace dique plein dans un pvc rook ceph
 
 Le pire c'est de trouver. On peut monitorer les volumes directement sur les hosts Linux.
 
@@ -1095,6 +1105,150 @@ Pour grossir le volume, ca se fait en deux étapes:
     2) Sur l'hôte Linux, grossir le système de fichier
         xfs_growfs /var/lib/kubelet/pods/a0f66ee9-2ad4-471c-88a8-ea7fb2c8e4c5/volumes/kubernetes.io~csi/pvc-4a0447ec-15f8-4232-8679-625f0f47be5a/mount
 Il faut donc monitorer les espaces disques directement sur les hôtes Linux
+
+### Remplacer un OSD non fonctionnels avec rook-ceph
+
+Il peut arriver qu'on des OSD devienne irrécupérable. En principe ca ne cause pas d'arrêt de service car les données sont répliqués sur d'autres OSD. 
+Voici les conditions dans laquelle c'est arrivé.
+Le cluster Kubernetes a 4 noeuds dont 3 sont munis d'un disque disponible pour CEPH. 
+    osd.0 kube03
+    osd.1 kube04
+    osd.2 kube02
+L'OSD corrompu est le osd.0 dans cet exemple.
+La première étape est d'ajouter de l'espace disque sur un noeud du cluster ou il n'y a pas de OSD. Dans notre cas kube01.
+Puisque je n'avais pas de disque supplémentaire, j'a enlevé le disque du serveur corrompue (kube03) et je l'ai branché. sur le serveur libre kube01.
+Pour le rendre disponible, il faut effacer le disque en se connectant par ssh sur le serveur kube01.
+Identifier le device associé au nouveau disque, dans mon cas /dev/sdb, et lancer la commande suivante: 
+    DISK="/dev/sdb"
+    # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
+    # You will have to run this step for all disks.
+    sgdisk --zap-all $DISK
+    # Clean hdds with dd
+    dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
+Pour accélérer la détection du nouveau disque et la création du nouvle osd, on peut repartir l'opérateur:
+    kubectl -n rook-ceph delete pod -l app=rook-ceph-operator
+Un fois le nouveau noeud OSD configuré on peut supprimer l'ancien:
+Arrêter l'opérateur rook-ceph
+    kubectl scale deployment -n rook-ceph rook-ceph-operator --replicas 0
+Supprimer le déploiement de l'OSD corrompu du serveur Kubernetes
+    kubectl delete deployment rook-ceph-osd-0 -n rook-ceph
+Se connecter dans le pod ceph-toolbox:
+    kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath="{.items[0].metadata.name}") bash
+Exécuter les commandes suivantes pour supprimer l'OSD de la configuration de CEPH
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd down osd.0
+    osd.0 is already down. 
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd out osd.0
+    osd.0 is already out. 
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd crush remove osd.0
+    removed item id 0 name 'osd.0' from crush map
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph auth del osd.0
+    updated
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd rm osd.0
+    removed osd.0    
+On peut surveiller l'avancement de la réplication avec la commande suivante:
+    watch ceph health
+Redémarrer l'opérateur rook-ceph
+    kubectl scale deployment -n rook-ceph rook-ceph-operator --replicas 1
+
+### Crash log
+Le journaux des services qui pont plantés sont contenu dans des crash logs. On peut les consulter et les archivés lorsqu'il ne sont plus d'actualité. Les journaux de plantages non archivé mettent le cluster en alerte HEALTH_WARN. En les archivant on peut remoettre l'état du cluster en HEALTH_OK
+
+Pour accéder au journaux, lancer ceph-toolbox
+
+Pour lister les journaux:
+    ceph crash ls
+    2020-09-28_15:30:43.217140Z_3bfcdf74-ed54-45ba-8e53-fb9460b735a6  osd.0
+Pour consulter un journal:
+    ceph crash info 2020-09-28_15:30:43.217140Z_3bfcdf74-ed54-45ba-8e53-fb9460b735a6
+Pour archiver une entrée de journal:
+    ceph crash archive 2020-09-28_15:30:43.217140Z_3bfcdf74-ed54-45ba-8e53-fb9460b735a6
+Pour tout archivé les entrées de journaux:
+    ceph crash archive-all
+
+### Mise à jour de l'opérateur rook-ceph et du cluster ceph
+Pour mettre à jour l'opérateur et le cluster...
+S'assurer que le cluster en en bonne santé et que tous les osd sont disponibles:
+Lancer le ceph-toolbox
+Obtenir l'état du cluster:
+    ceph health
+    HEALTH_OK
+Obtenir l'état des osd:
+    ceph osd tree
+    ID  CLASS  WEIGHT   TYPE NAME        STATUS  REWEIGHT  PRI-AFF
+    -1         0.97357  root default                              
+    -9         0.22829      host kube01                           
+    3    hdd  0.22829          osd.3        up   1.00000  1.00000
+    -7         0.29050      host kube02                           
+    2    hdd  0.29050          osd.2        up   1.00000  1.00000
+    -3               0      host kube03                           
+    -5         0.45479      host kube04                           
+    0    hdd  0.45479          osd.0        up   1.00000  1.00000    
+#### Mettre à jour l'opérateur
+Pour mettre à jour l'opérateur, on doit modifier le numéro de version dans le manifest qui a été utilisé pour l'installation du cluster.
+Dans notre cas, le fichier resources/rook/operator.yaml. Modifier le numéro de version dans la section suivante:
+    spec:
+      serviceAccountName: rook-ceph-system
+      containers:
+      - name: rook-ceph-operator
+        image: rook/ceph:v1.3.11
+Déployer ensuite l'opérateur
+    kubectl apply -f resources/rook/operator.yaml
+Surveiller le déploiement en utilisant la commande suivante et attendre que ca se stabilise:
+    watch kubectl get pod -n rook-ceph
+    NAME                                               READY   STATUS      RESTARTS   AGE
+    csi-cephfsplugin-provisioner-6748bb9646-n64lw      5/5     Running     0          18h
+    csi-cephfsplugin-provisioner-6748bb9646-wzkt6      5/5     Running     0          18h
+    csi-cephfsplugin-vn4xq                             3/3     Running     3          18h
+    csi-cephfsplugin-w725z                             3/3     Running     0          18h
+    csi-cephfsplugin-xs7tw                             3/3     Running     0          18h
+    csi-cephfsplugin-z8mgc                             3/3     Running     0          18h
+    csi-rbdplugin-6225v                                3/3     Running     3          18h
+    csi-rbdplugin-j57n9                                3/3     Running     0          18h
+    csi-rbdplugin-jgwbp                                3/3     Running     0          18h
+    csi-rbdplugin-provisioner-78db9f787f-4sclm         6/6     Running     0          18h
+    csi-rbdplugin-provisioner-78db9f787f-b5j9q         6/6     Running     0          18h
+    csi-rbdplugin-tmqbr                                3/3     Running     1          18h
+    rook-ceph-crashcollector-kube01-7d5dddbf67-94rqf   1/1     Running     0          20h
+    rook-ceph-crashcollector-kube02-54749c9d48-2x7vk   1/1     Running     0          18h
+    rook-ceph-crashcollector-kube03-6cb68f6c5c-sg8kh   1/1     Running     0          24h
+    rook-ceph-crashcollector-kube04-69c5bc94c4-rm4m6   1/1     Running     1          3h38m
+    rook-ceph-mgr-a-754fbc96c8-q2tkd                   1/1     Running     0          24h
+    rook-ceph-mon-dd-7c9fb48cf9-mrt4w                  1/1     Running     0          24h
+    rook-ceph-mon-de-6885788fcf-795n8                  1/1     Running     0          19h
+    rook-ceph-mon-df-6779744bb-vzqwh                   1/1     Running     0          3h17m
+    rook-ceph-operator-8d9bf87c-c9gbg                  1/1     Running     0          3h20m
+    rook-ceph-osd-0-5d557c6965-rc7t5                   1/1     Running     0          3h7m
+    rook-ceph-osd-2-f478659bf-sq7cv                    1/1     Running     0          3h18m
+    rook-ceph-osd-3-7b94786cb5-m27tn                   1/1     Running     0          20h
+    rook-ceph-osd-prepare-kube01-pl2vh                 0/1     Completed   0          139m
+    rook-ceph-osd-prepare-kube02-n2b2p                 0/1     Completed   0          139m
+    rook-ceph-osd-prepare-kube03-fb6qw                 0/1     Completed   0          139m
+    rook-ceph-osd-prepare-kube04-ffq8l                 0/1     Completed   0          138m
+    rook-ceph-tools-67788f4dd7-hkrnq                   1/1     Running     0          18h
+    rook-discover-f8rv8                                1/1     Running     0          18h
+    rook-discover-ggp2b                                1/1     Running     0          18h
+    rook-discover-lc7fl                                1/1     Running     136        18h
+    rook-discover-trvxn                                1/1     Running     0          18h    
+
+#### Mise à jour du cluster
+Pour la mise à jour du cluster, modifier la section suivante manifest utilisé pour créer le cluster. Dans notre cas, resources/rook/cluster.yaml
+    apiVersion: ceph.rook.io/v1
+    kind: CephCluster
+    metadata:
+    name: rook-ceph
+    namespace: rook-ceph
+    spec:
+    cephVersion:
+        # The container image used to launch the Ceph daemon pods (mon, mgr, osd, mds, rgw).
+        # v13 is mimic, v14 is nautilus, and v15 is octopus.
+        # RECOMMENDATION: In production, use a specific version tag instead of the general v14 flag, which pulls the latest release and could result in different
+        # versions running within the cluster. See tags available at https://hub.docker.com/r/ceph/ceph/tags/.
+        # If you want to be more precise, you can always use a timestamp tag such ceph/ceph:v14.2.5-20190917
+        # This tag might not contain a new Ceph version, just security fixes from the underlying operating system, which will reduce vulnerabilities
+        image: ceph/ceph:v15.2.4
+Déployer le manifest:
+    kubectl apply -f resources/rook/cluster.yaml
+Attendre que le processus se fasse. Ca peut être très long car chaque composant va se mettre à jour progessivement sans interruption de service.
 
 ## Réseau
 Calico (réseau):
