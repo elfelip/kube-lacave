@@ -25,6 +25,11 @@ metadata:
     app: login-lacave
 spec:
   replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: login-lacave
@@ -38,6 +43,7 @@ spec:
       containers:
       - name: keycloak
         image: docker.lacave.info/lacave/keycloak:10.0.2
+        imagePullPolicy: Always
         env:
         - name: KEYCLOAK_USER
           value: admin
@@ -47,6 +53,10 @@ spec:
           value: "true"
         - name: DB_VENDOR
           value: postgres
+        - name: KEYCLOAK_DB_DRIVER
+          value: postgresql
+        - name: DB_URL
+          value: "jdbc:postgresql://loginlacavecluster.kcdatabases:5432/keycloak"
         - name: DB_ADDR
           value: loginlacavecluster.kcdatabases
         - name: DB_PORT
@@ -57,17 +67,25 @@ spec:
           value: keycloak
         - name: DB_USER
           value: keycloak
+        - name: DB_USERNAME
+          value: keycloak
         - name: DB_PASSWORD
           value: keycloak
+        - name: KEYCLOAK_HA_CONFIG
+          value: standalone-ha-lacave.xml
         - name: JGROUPS_DISCOVERY_PROTOCOL
           value: JDBC_PING
+#        - name: JGROUPS_DISCOVERY_PROTOCOL
+#          value: dns.PING
+#        - name: JGROUPS_DISCOVERY_PROPERTIES
+#          value: "dns_query=login-lacave-service"
         ports:
         - containerPort: 8080
         readinessProbe:
           httpGet:
             path: /auth/realms/master
             port: 8080
-          initialDelaySeconds: 5
+          initialDelaySeconds: 60
           periodSeconds: 10
         livenessProbe:
           httpGet:
@@ -80,7 +98,7 @@ spec:
             path: /auth/realms/master
             port: 8080
           failureThreshold: 30
-          periodSeconds: 10
+          periodSeconds: 30
       securityContext:
         fsGroup: 0
         runAsNonRoot: false

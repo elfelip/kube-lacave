@@ -1151,7 +1151,7 @@ Redémarrer l'opérateur rook-ceph
     kubectl scale deployment -n rook-ceph rook-ceph-operator --replicas 1
 
 ### Crash log
-Le journaux des services qui pont plantés sont contenu dans des crash logs. On peut les consulter et les archivés lorsqu'il ne sont plus d'actualité. Les journaux de plantages non archivé mettent le cluster en alerte HEALTH_WARN. En les archivant on peut remoettre l'état du cluster en HEALTH_OK
+Le journaux des services qui pont plantés sont contenu dans des crash logs. On peut les consulter et les archivés lorsqu'il ne sont plus d'actualité. Les journaux de plantages non archivés mettent le cluster en alerte HEALTH_WARN. En les archivant on peut remettre l'état du cluster en HEALTH_OK
 
 Pour accéder au journaux, lancer ceph-toolbox
 

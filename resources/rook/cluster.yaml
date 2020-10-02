@@ -20,11 +20,11 @@ spec:
     # v13 is mimic, v14 is nautilus, and v15 is octopus.
     # RECOMMENDATION: In production, use a specific version tag instead of the general v14 flag, which pulls the latest release and could result in different
     # versions running within the cluster. See tags available at https://hub.docker.com/r/ceph/ceph/tags/.
-    # If you want to be more precise, you can always use a timestamp tag such ceph/ceph:v14.2.5-20190917
+    # If you want to be more precise, you can always use a timestamp tag such ceph/ceph:v15.2.4-20200630
     # This tag might not contain a new Ceph version, just security fixes from the underlying operating system, which will reduce vulnerabilities
     image: ceph/ceph:v15.2.4
-    # Whether to allow unsupported versions of Ceph. Currently mimic and nautilus are supported, with the recommendation to upgrade to nautilus.
-    # Octopus is the version allowed when this is set to true.
+    # Whether to allow unsupported versions of Ceph. Currently `nautilus` and `octopus` are supported.
+    # Future versions such as `pacific` would require this to be set to `true`.
     # Do not set to true in production.
     allowUnsupported: false
   # The path on the host where configuration files will be persisted. Must be specified.
@@ -45,7 +45,7 @@ spec:
   mgr:
     modules:
     # Several modules should not need to be included in this list. The "dashboard" and "monitoring" modules
-    # are already enabled by other settings in the cluster CR and the "rook" module is always enabled.
+    # are already enabled by other settings in the cluster CR.
     - name: pg_autoscaler
       enabled: true
   # enable the ceph dashboard for viewing cluster status
@@ -96,6 +96,22 @@ spec:
     # To signify that automatic deletion is desired, use the value "yes-really-destroy-data". Only this and an empty
     # string are valid values for this field.
     confirmation: ""
+    # sanitizeDisks represents settings for sanitizing OSD disks on cluster deletion
+    sanitizeDisks:
+      # method indicates if the entire disk should be sanitized or simply ceph's metadata
+      # in both case, re-install is possible
+      # possible choices are 'complete' or 'quick' (default)
+      method: quick
+      # dataSource indicate where to get random bytes from to write on the disk
+      # possible choices are 'zero' (default) or 'random'
+      # using random sources will consume entropy from the system and will take much more time then the zero source
+      dataSource: zero
+      # iteration overwrite N times instead of the default (1)
+      # takes an integer value
+      iteration: 1
+    # allowUninstallWithVolumes defines how the uninstall should be performed
+    # If set to true, cephCluster deletion does not wait for the PVs to be deleted.
+    allowUninstallWithVolumes: false
 
   # To control where various services will be scheduled by kubernetes, use the placement configuration sections below.
   # The example under 'all' would have all services scheduled on kubernetes nodes labeled with 'role=storage-node' and
@@ -130,8 +146,16 @@ spec:
 #    mon:
 #    osd:
 #    cleanup:
+#    prepareosd:
 # If no mgr annotations are set, prometheus scrape annotations will be set by default.
-#   mgr:
+#    mgr:
+  labels:
+#    all:
+#    mon:
+#    osd:
+#    cleanup:
+#    mgr:
+#    prepareosd:
   resources:
 # The requests and limits set here, allow the mgr pod to use half of one CPU core and 1 gigabyte of memory
 #    mgr:
@@ -192,3 +216,25 @@ spec:
     manageMachineDisruptionBudgets: false
     # Namespace in which to watch for the MachineDisruptionBudgets.
     machineDisruptionBudgetNamespace: openshift-machine-api
+    
+  # healthChecks
+  # Valid values for daemons are 'mon', 'osd', 'status'
+  healthCheck:
+    daemonHealth:
+      mon:
+        disabled: false
+        interval: 45s
+      osd:
+        disabled: false
+        interval: 60s
+      status:
+        disabled: false
+        interval: 60s
+    # Change pod liveness probe, it works for all mon,mgr,osd daemons
+    livenessProbe:
+      mon:
+        disabled: false
+      mgr:
+        disabled: false
+      osd:
+        disabled: false
