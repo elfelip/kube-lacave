@@ -926,35 +926,7 @@ Pour mettre à jour le cluster, lancer la commande suivante à partir du serveur
 # Monitoring
 La solution la plus populaire pour la surveillance d'un cluster Kubernetes est la combinaison Prometheus et Grafana.
 
-## Première possibilité: Kube-prometheus de CoreOS
-Pour faciliter la gestion du monitoring on peut utilise l'opérateur prometheus de CoreOS disonible sur Github: https://github.com/coreos/kube-prometheus
-
-Cloner le dépôt git:
-    git clone https://github.com/coreos/kube-prometheus.git
-Déployer l'opérateur:
-    cd kube-prometheus
-    kubectl create -f manifests/setup
-    until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
-    kubectl create -f manifests/
-
-
-### Node exporter
-On utilise Prometheus et Grafana qui ont été déployé en même temps que le composant istio.
-On ajoute certains composants comme le node exporter permettant de monitorer les noeuds du cluster Kubernetes.
-
-Créer le namespace
-    kubectl apply - resources/monitoring/monitoring-deployment.yml
-
-Ajouter le repo stable
-    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
-Installer le node exporter
-    helm install -n monitoring node-exporter stable/prometheus-node-exporter
-
-### Configuration de Grafana
-
-On peut ajouter un dashboard pour le node exporter: https://grafana.com/api/dashboards/1860/revisions/20/download
-
-## Deuxième possibilité, utiliser une charte helm
+## Installation de Prometheus, Grafana et Node Exporter avec une charte helm
 On utilise la charte helm kube-prometheus pour déployer l'opérateur Prometheus.
 
 Ajouter le repository à votre installation de Helm
@@ -964,7 +936,10 @@ Ajouter le repository à votre installation de Helm
 Créer le namespace monitoring
     kubectl create namespace monitoring
 Installer la charte en utilisant les personnalisation de ce projet:
-    helm install -f resources/monitoring/kube-prometheus-stack.yaml lacave-prom prometheus-community/kube-prometheus-stack
+    helm install -f resources/monitoring/kube-prometheus-helm-values.yaml lacave-prom prometheus-community/kube-prometheus-stack
+
+Grafana est accessible à l'adresse http://grafana.kube.lacave.info
+L'utilisateur est admin et le mot de passe se retrouve dans le fichier kube-prometheus-helm-values.yaml
 
 # Visibilité
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
