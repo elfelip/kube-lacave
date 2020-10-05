@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ceph-rook-svc-monitor
+  namespace: monitoring
+  labels:
+    release: lacave-prom
+spec:
+  selector:
+    matchLabels:
+      app: rook-ceph-mgr
+  namespaceSelector:
+    matchNames:
+      - "rook-ceph"
+  endpoints:
+  - port: http-metrics

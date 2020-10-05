@@ -941,6 +941,16 @@ Installer la charte en utilisant les personnalisation de ce projet:
 Grafana est accessible à l'adresse http://grafana.kube.lacave.info
 L'utilisateur est admin et le mot de passe se retrouve dans le fichier kube-prometheus-helm-values.yaml
 
+### Service monitor
+Pour monitorer un composants, on doit crée une ressource ServiceMonitor qui décrit quel est le service de notre composant quyi expose les métriques pour Prometheus.
+
+Voir la page suivante pour une bonne explication de comment ca marche et comment on peut diagnostiquer les problèmes de récupération des métriques: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/troubleshooting.md
+
+### Surveillance du cluster ceph
+Lors de l'installation du cluster ceph, le monitoring a été configuré par l'opérateur rook. Pour que Prometheus puisse les importer, on doit créer un service monitor:
+Lancer la commande suivante pour le créer:
+    kubectl apply -f resources/rook/mgr-service-monitor.yaml
+
 # Visibilité
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
 

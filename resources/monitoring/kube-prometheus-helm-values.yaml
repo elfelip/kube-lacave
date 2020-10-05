@@ -93,7 +93,7 @@ kubeStateMetrics:
 ## Configuration for kube-state-metrics subchart
 ##
 kube-state-metrics:
-  namespaceOverride: ""
+  namespaceOverride: "monitoring"
   rbac:
     create: true
   podSecurityPolicy:
@@ -158,6 +158,12 @@ prometheus:
     ## Maximum size of metrics
     ##
     retentionSize: ""
+
+    ## Namespaces to be selected for ServiceMonitor discovery.
+    ## See https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#namespaceselector for usage
+    ##
+    serviceMonitorNamespaceSelector: 
+      any: true
 
     ## Prometheus StorageSpec for persistent data
     ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/user-guides/storage.md
