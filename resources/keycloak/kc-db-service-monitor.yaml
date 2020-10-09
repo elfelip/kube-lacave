@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: loginlacave-db-svc-monitor
+  namespace: monitoring
+  labels:
+    release: lacave-prom
+spec:
+  selector:
+    matchLabels:
+      pg-cluster: new-loginlacavecluster
+  namespaceSelector:
+    matchNames:
+      - "kcdatabases"
+  endpoints:
+  - port: postgres-exporter

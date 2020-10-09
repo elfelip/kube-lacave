@@ -577,7 +577,7 @@ On peut tester le client en exécutant les commandes suivantes:
 
 Voici la commande pour tester le cluster testcluster utilisant rook comme stockage
 
-    pgo create cluster testcluster --storage-config=rook --pgbackrest-storage-config=rook
+    pgo create cluster testcluster --storage-config=rook --pgbackrest-storage-config=rook --metrics
     created cluster: testcluster
     workflow id: e0a1bb2b-8ff0-4a65-90a0-45f0d00477c7
     database name: testcluster
@@ -619,7 +619,7 @@ Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par 
     # Créer le namespace
     pgo create namespace kcdatabases
     # Créer le cluster de base de données et la base de données de Keycloak
-    pgo create cluster loginlacavecluster -n kcdatabases --database=keycloak --username=keycloak --password=keycloak --storage-config=rook --pgbackrest-storage-config=rook
+    pgo create cluster loginlacavecluster -n kcdatabases --database=keycloak --username=keycloak --password=keycloak --storage-config=rook --pgbackrest-storage-config=rook --metrics
 
 ## Créer l'image Keycloak avec les scripts supportant le clustering.
 Pour mettre Keycloak en cluster, on utilise le protocol JDBC_PING pour le Jgroups. Pour ce faire, des scripts doivent être ajouté à l'image de base de Keycloak. Ces scripts sont inclus dans le présent projet, pour créer l'image Keycloak, lancer les commmandes suivantes:
@@ -950,6 +950,10 @@ Voir la page suivante pour une bonne explication de comment ca marche et comment
 Lors de l'installation du cluster ceph, le monitoring a été configuré par l'opérateur rook. Pour que Prometheus puisse les importer, on doit créer un service monitor:
 Lancer la commande suivante pour le créer:
     kubectl apply -f resources/rook/mgr-service-monitor.yaml
+
+On peut ensuite importer un tableau de bord pour ceph dans Grafana. L'identifiant de celui que j'ai utilisé est le 7056:
+    https://grafana.com/grafana/dashboards/7056
+
 
 # Visibilité
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
