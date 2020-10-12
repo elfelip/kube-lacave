@@ -3,10 +3,10 @@ kind: Elasticsearch
 metadata:
   name: kube-lacave-elasticsearch
 spec:
-  version: 7.8.0
+  version: 7.9.2
   nodeSets:
   - name: masters
-    count: 3
+    count: 1
     config:
       node.master: true
       node.data: true

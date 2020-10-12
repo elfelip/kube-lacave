@@ -970,7 +970,13 @@ On peut alors surveiller son déploiment
 On peut alors créer des cluster Elasticsearch. Dans notre cas, on va en créer un pour recueillir les logs des pods.
     kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml -n elastic-system
 
+Installer Kibana
+    kubectl apply -f resources/journalisation/kibana/kube-lacave-kibana-manifest.yaml -n elastic-system
 
+Pour obtenir le mot de passe:
+    kubectl get secret kube-lacave-kibana-kibana-user -o=jsonpath='{.data.elastic-system-kube-lacave-kibana-kibana-user}' -n elastic-system| base64 --decode; echo
+
+L'URL de kibana est https://kibana.kube.lacave.info
 
 # Visibilité
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
