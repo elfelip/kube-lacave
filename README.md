@@ -955,6 +955,23 @@ On peut ensuite importer un tableau de bord pour ceph dans Grafana. L'identifian
     https://grafana.com/grafana/dashboards/7056
 
 
+# Journalisation
+Cette section décrit les étapes pour déployer les services de journalisation
+
+## ECK
+
+Elastic Cloud on Kubernetes. https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html
+
+Installer les CRD et l'opérateur ainsi que ses règles d'accès.
+    kubectl apply -f https://download.elastic.co/downloads/eck/1.2.1/all-in-one.yaml
+On peut alors surveiller son déploiment
+    kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
+
+On peut alors créer des cluster Elasticsearch. Dans notre cas, on va en créer un pour recueillir les logs des pods.
+    kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml -n elastic-system
+
+
+
 # Visibilité
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
 

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: utilitaires
+spec:
+  containers:
+  - name: utilitaires
+    image: centos:8
+    command:
+      - sleep
+      - "3600"
+    imagePullPolicy: IfNotPresent
+  restartPolicy: Always
+  nodeSelector:
+    kubernetes.io/hostname: kube02
