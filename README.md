@@ -1177,6 +1177,26 @@ Pour archiver une entrée de journal:
 Pour tout archivé les entrées de journaux:
     ceph crash archive-all
 
+### Corrgier PG damaged et pg inconsistent
+Il peut arriver, après un redémarrage forcé, que le cluster se retrouve en erreur avec le message suivant:
+    [ERR] PG_DAMAGED: Possible data damage: 1 pg inconsistent
+
+Pour connaitre quel PG est en erreur, lancer le ceph-toolbox
+    ceph-toolbox
+Lancer la commande suivante:
+    ceph health detail
+    HEALTH_ERR 1 scrub errors; Possible data damage: 1 pg inconsistent
+    [ERR] OSD_SCRUB_ERRORS: 1 scrub errors
+    [ERR] PG_DAMAGED: Possible data damage: 1 pg inconsistent
+        pg 1.a is active+clean+inconsistent, acting [2,0,1]
+Pour corriger l'erreur, dans ce cas avec le PG 1.a, lancer la commande suivante:
+    ceph pg repair 1.a
+        instructing pg 1.a on osd.2 to repair
+On peut surveiller l'état du clueter avec la commande suivante:
+    watch ceph health detail
+Lorsque la tâche de réparation se termin, l'état du clueter devrait être:
+    HEALTH_OK
+    
 ### Mise à jour de l'opérateur rook-ceph et du cluster ceph
 Pour mettre à jour l'opérateur et le cluster...
 S'assurer que le cluster en en bonne santé et que tous les osd sont disponibles:
