@@ -43,14 +43,13 @@ spec:
   - nexus.lacave.info    
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   namespace: nexus
   name: nexus-deployment
   labels:
     app: nexus
 spec:
-  serviceName: nexus
   replicas: 1
   selector:
     matchLabels:
@@ -60,6 +59,8 @@ spec:
       labels:
         app: nexus
     spec:
+#      nodeSelector:
+#        kubernetes.io/hostname: kube02
       securityContext:
         runAsUser: 0
         runAsGroup: 0

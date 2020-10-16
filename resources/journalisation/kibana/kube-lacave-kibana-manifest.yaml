@@ -7,6 +7,10 @@ spec:
   count: 1
   elasticsearchRef:
     name: kube-lacave-elasticsearch
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true    
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
