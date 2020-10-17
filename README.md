@@ -968,10 +968,16 @@ On peut alors surveiller son déploiment
     kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 On peut alors créer des cluster Elasticsearch. Dans notre cas, on va en créer un pour recueillir les logs des pods.
-    kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml -n elastic-system
+    kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml
+
+Installer les beats pour recueillir les journaux des conteneurs.
+    kubectl apply -f resources/journalisation/beats/kube-lacave-beats-manifest.yaml
+
+Installer APM Server.
+    kubectl apply -f resources/journalisation/apm/kube-lacave-apm-manifest.yaml
 
 Installer Kibana
-    kubectl apply -f resources/journalisation/kibana/kube-lacave-kibana-manifest.yaml -n elastic-system
+    kubectl apply -f resources/journalisation/kibana/kube-lacave-kibana-manifest.yaml
 
 Pour obtenir le mot de passe de l'utilisateur elastic:
     kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo

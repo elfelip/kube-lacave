@@ -2,6 +2,7 @@ apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: kube-lacave-elasticsearch
+  namespace: elastic-system
 spec:
   version: 7.9.2
   nodeSets:
@@ -21,4 +22,4 @@ spec:
         resources:
           requests:
             storage: 10Gi
-        storageClassName: rook-ceph-block     
+        storageClassName: rook-ceph-block
