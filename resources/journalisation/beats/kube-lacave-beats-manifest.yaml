@@ -11,36 +11,40 @@ spec:
   kibanaRef:
     name: kube-lacave-kibana
   config:
-    filebeat.autodiscover.providers:
-    - node: ${NODE_NAME}
-      type: kubernetes
-      hints.default_config.enabled: "false"
-      templates:
-      - condition.equals.kubernetes.namespace: log-namespace
-        config:
-        - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
-          type: container
-      - condition.equals.kubernetes.labels.log-label: "true"
-        config:
-        - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
-          type: container
+    filebeat:
+      autodiscover:
+        providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints:
+            enabled: true
+            default_config:
+              type: container
+              paths:
+              - /var/log/containers
     processors:
-    - add_cloud_metadata: {}
+    - add_kubernetes_metadata: 
+      host: ${NODE_NAME}
+      matchers:
+      - logs_path:
+          logs_path: "/var/log/containers/"
+      #host: <hostname>
+      # If kube_config is not set, KUBECONFIG environment variable will be checked
+      # and if not present it will fall back to InCluster
+      #kube_config: ~/.kube/config
     - add_host_metadata: {}
+    #- add_cloud_metadata: {}
   daemonSet:
     podTemplate:
       spec:
+        dnsPolicy: ClusterFirstWithHostNet
         serviceAccountName: filebeat
         automountServiceAccountToken: true
-        terminationGracePeriodSeconds: 30
-        dnsPolicy: ClusterFirstWithHostNet
-        hostNetwork: true # Allows to provide richer host metadata
+        hostNetwork: true
+        securityContext:
+          runAsUser: 0
         containers:
         - name: filebeat
-          securityContext:
-            runAsUser: 0
-            # If using Red Hat OpenShift uncomment this:
-            #privileged: true
           volumeMounts:
           - name: varlogcontainers
             mountPath: /var/log/containers
@@ -63,6 +67,7 @@ spec:
         - name: varlibdockercontainers
           hostPath:
             path: /var/lib/docker/containers
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
