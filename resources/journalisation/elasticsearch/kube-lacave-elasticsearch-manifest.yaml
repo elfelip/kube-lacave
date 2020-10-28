@@ -4,10 +4,24 @@ metadata:
   name: kube-lacave-elasticsearch
   namespace: elastic-system
 spec:
-  version: 7.9.2
+  version: 7.9.3
   nodeSets:
   - name: masters
     count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: -Xms2g -Xmx2g
+          resources:
+            requests:
+              memory: 4Gi
+              cpu: 0.5
+            limits:
+              memory: 4Gi
+              cpu: 2
     config:
       node.master: true
       node.data: true

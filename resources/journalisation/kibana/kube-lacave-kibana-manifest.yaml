@@ -4,7 +4,7 @@ metadata:
   name: kube-lacave-kibana
   namespace: elastic-system
 spec:
-  version: 7.9.2
+  version: 7.9.3
   count: 1
   elasticsearchRef:
     name: kube-lacave-elasticsearch

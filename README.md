@@ -969,22 +969,191 @@ On peut alors surveiller son déploiment
 
 On peut alors créer des cluster Elasticsearch. Dans notre cas, on va en créer un pour recueillir les logs des pods.
     kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml
-
-Installer les beats pour recueillir les journaux des conteneurs.
-    kubectl apply -f resources/journalisation/beats/kube-lacave-beats-manifest.yaml
-
-Installer APM Server.
-    kubectl apply -f resources/journalisation/apm/kube-lacave-apm-manifest.yaml
+Attendre que le serveur Elastic soit fonctionnel:
+    watch ubectl get elastic -n elastic-system
+    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
+    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   4m39s
 
 Installer Kibana
     kubectl apply -f resources/journalisation/kibana/kube-lacave-kibana-manifest.yaml
 
+Attendre que le serveur Kibana soit disponible:
+    watch kubectl get elastic -n elastic-system
+    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
+    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   40m
+
+    NAME                                              HEALTH   NODES   VERSION   AGE
+    kibana.kibana.k8s.elastic.co/kube-lacave-kibana   green    1       7.9.3     34m
+
+Installer les beats pour recueillir les journaux des conteneurs.
+    kubectl apply -f resources/journalisation/beats/kube-lacave-beats-manifest.yaml
+Attendre que le beat soit disponbile:
+    watch kubectl get elastic -n elastic-system
+    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
+    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   44m
+
+    NAME                                              HEALTH   NODES   VERSION   AGE
+    kibana.kibana.k8s.elastic.co/kube-lacave-kibana   green    1       7.9.3     38m
+
+    NAME                                         HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
+    beat.beat.k8s.elastic.co/kube-lacave-beats   green    4           4          filebeat   7.9.3     116s
+
 Pour obtenir le mot de passe de l'utilisateur elastic:
     kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
-
 L'URL de kibana est https://kibana.kube.lacave.info
-S'authentifier en tant que lesastic avec le mot de passe trouvé à l'étape précédente.
+    S'authentifier en tant que elsastic avec le mot de passe trouvé à l'étape précédente.
+    Naviguer dans le menu dans le haut à gauche de l'écran: menu Observability -> Logs. Cette étape permet de voir si les journaux des beats sont envoyés sur Elasticsearch et visibles par Kibana.
+    Naviguer dans le menu Kibana -> Discover. On peut explorer les journaux et faire des requêtes pour les filtrer.
 
+
+Installer APM Server. Cette partie n'est pas fonctionnelle encore...
+    kubectl apply -f resources/journalisation/apm/kube-lacave-apm-manifest.yaml
+
+## Graylog
+Graylog est aussi utilisé pour recueillir les journaux. On l'utilise pour les journaus applicatifs avec le module GELF.
+Le déploiement de Graylog se fait en 3 étapes.
+    Déployer un MongoDB
+    Déployer Elasticsearch avec ECK
+    Déployer Graylog
+On doit premièrement créer le Namespace pour Graylog
+    kubectl apply -f resources/journalisation/graylog/graylog-namespace.yaml
+On créé ensuite le certificat SSL
+    kubectl apply -f resources/journalisation/graylog/graylog-cert-manifest.yaml
+
+### MongoDB
+On utilise Helm pour déployer MongoDB. Les paramètres à utiliser pour la charte sont dans le fichier resources/journalisation/mongodb/kube-mongodb-helm-values.yaml
+Pour le déployer
+    Installer le repository Helm:
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    Déployer la charte avec les paramètres de notre cluster:
+    helm install -f resources/journalisation/graylog/graylog-mongodb-helm-values.yaml lacave-graylog-mongodb bitnami/mongodb --namespace graylog-system
+        NAME: lacave-graylog-mongodb
+        LAST DEPLOYED: Thu Oct 22 08:52:10 2020
+        NAMESPACE: graylog-system
+        STATUS: deployed
+        REVISION: 1
+        TEST SUITE: None
+        NOTES:
+        ** Please be patient while the chart is being deployed **
+
+        MongoDB can be accessed via port 27017 on the following DNS name(s) from within your cluster:
+
+            lacave-graylog-mongodb.graylog-system.svc.cluster.lacave
+
+        To get the root password run:
+
+            export MONGODB_ROOT_PASSWORD=$(kubectl get secret --namespace graylog-system lacave-graylog-mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 --decode)
+
+        To get the password for "graylog" run:
+
+            export MONGODB_PASSWORD=$(kubectl get secret --namespace graylog-system lacave-graylog-mongodb -o jsonpath="{.data.mongodb-password}" | base64 --decode)
+
+        To connect to your database, create a MongoDB client container:
+
+            kubectl run --namespace graylog-system lacave-graylog-mongodb-client --rm --tty -i --restart='Never' --image docker.io/bitnami/mongodb:4.4.1-debian-10-r39 --command -- bash
+
+        Then, run the following command:
+            mongo admin --host "lacave-graylog-mongodb" --authenticationDatabase admin -u root -p $MONGODB_ROOT_PASSWORD
+
+        To connect to your database from outside the cluster execute the following commands:
+
+            kubectl port-forward --namespace graylog-system svc/lacave-graylog-mongodb 27017:27017 &
+            mongo --host 127.0.0.1 --authenticationDatabase admin -p $MONGODB_ROOT_PASSWORD
+
+### Elasticsearch avec Helm
+Lancer la commande suivante pour installer Elasticsearch 6.7.2 avec la charte HELM stable.
+Cette charte est dépréciée. Elle sera remplacé par l'opérateur lorsque Graylog pourra supporter la version 6.8 d'Elasticsearch.
+    helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-elasticsearch-helm-values.yaml lacave-graylog-elasticsearch stable/elasticsearch
+    This Helm chart is deprecated. Please use https://github.com/elastic/helm-charts/tree/master/elasticsearch instead.
+
+    ---
+
+    The elasticsearch cluster has been installed.
+
+    Elasticsearch can be accessed:
+
+    * Within your cluster, at the following DNS name at port 9200:
+
+        lacave-graylog-elasticsearch-client.graylog-system.svc
+
+    * From outside the cluster, run these commands in the same shell:
+
+        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app=elasticsearch,component=client,release=lacave-graylog-elasticsearch" -o jsonpath="{.items[0].metadata.name}")
+        echo "Visit http://127.0.0.1:9200 to use Elasticsearch"
+        kubectl port-forward --namespace graylog-system $POD_NAME 9200:9200    
+
+### Elasticsearch avec l'opérateur
+Ne pas utiliser l'opérateur pour le moment car il ne peut pas installer un version supportés par Graylog pour le moment
+On utilise l'opérateur Elasticsearch déployé dans la section précédente pour le déployer pour Graylog.
+kubectl apply -f resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml
+Pour obtenir le mot de passe de l'utilisateur elastic:
+    kubectl get secret graylog-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n graylog-system | base64 -d; echo
+
+On doit ajouter ce mot de passe dans la section elasticsearch du fichier resources/journalisation/graylog/graylog-helm-values.yaml
+elasticsearch:
+    hosts: http://elastic:LeMotDePasse@graylog-elasticsearch-es-http:9200
+
+### Graylog
+On utilise une charte helms avec u fichier de valeur pour créer le serveur Graylog:
+Déployer le serveur Graylog avec la charte:
+    helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
+        NAME: lacave-graylog
+        LAST DEPLOYED: Wed Oct 21 22:34:55 2020
+        NAMESPACE: graylog-system
+        STATUS: deployed
+        REVISION: 1
+        TEST SUITE: None
+        NOTES:
+        To connect to your Graylog server:
+
+        1. Get the application URL by running these commands:
+
+        Graylog Web Interface uses JavaScript to get detail of each node. The client JavaScript cannot communicate to node when service type is `ClusterIP`. 
+        If you want to access Graylog Web Interface, you need to enable Ingress.
+            NOTE: Port Forward does not work with web interface.
+
+        2. The Graylog root users
+
+        echo "User: admin"
+        echo "Password: $(kubectl get secret --namespace graylog-system lacave-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode)"
+
+        To send logs to graylog:
+
+        NOTE: If `graylog.input` is empty, you cannot send logs from other services. Please make sure the value is not empty.
+                See https://github.com/helm/charts/tree/master/stable/graylog#input for detail
+        1. TCP
+        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app.kubernetes.io/name=graylog,app.kubernetes.io/instance=lacave-graylog" -o jsonpath="{.items[0].metadata.name}")
+        Run the command
+        kubectl port-forward $POD_NAME 12222:12222
+        Then send logs to 127.0.0.1:12222
+        Run the command
+        kubectl port-forward $POD_NAME 5061:5061
+        Then send logs to 127.0.0.1:5061
+        2. UDP
+        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app.kubernetes.io/name=graylog,app.kubernetes.io/instance=lacave-graylog" -o jsonpath="{.items[0].metadata.name}")
+        Run the command
+        kubectl port-forward $POD_NAME 12231:12231
+        Then send logs to 127.0.0.1:12231
+
+Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
+Lancer la commande suivante pour modifier le configmap:
+    kubectl edit configmap lacave-graylog -n graylog-system
+Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
+Pour: http_external_uri = https://graylog.kube.lacave.info
+Arrêter les pods:
+    kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
+Une fois tou les pods supprimé, démarrer les nouveaus pods:
+    kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
+
+L'interface de GRaylog est disponible par l'URL https://graylog.kube.lacave.info
+Utiliser les informations de connexion selon les instruction donnée lors de l'installation de la charte:
+    echo "User: admin"
+    echo "Password: $(kubectl get secret --namespace graylog-system lacave-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode)"
+Créer les inputs suivants:
+    gelf-tcp: port 12222
+    gelf-udp: port 12231
+    beats: port 5061
+    
 # Visibilité
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
 
