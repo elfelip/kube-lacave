@@ -1,0 +1,18 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: graylog-lacave-tls
+  namespace: graylog-system
+spec:
+  secretName: graylog-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+  commonName: graylog.kube.lacave.info
+  organization:
+  - Lacave CA
+  dnsNames:
+  - graylog.kube.lacave.info

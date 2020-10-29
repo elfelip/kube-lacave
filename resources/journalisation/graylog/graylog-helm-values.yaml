@@ -1,0 +1,78 @@
+rbac:
+  # Specifies whether RBAC resources should be created
+  ##
+  create: true
+
+  resources:
+    - pods
+    - secrets
+
+serviceAccount:
+  # Specifies whether a ServiceAccount should be created
+  ##
+  create: true
+  # The name of the ServiceAccount to use.
+  # If not set and create is true, a name is generated using the fullname template
+  ##
+  name: lacave-graylog
+
+tags:
+  install-mongodb: false
+  install-elasticsearch: false
+
+graylog:
+  image:
+    repository: graylog/graylog:4.0.0-beta.2-1
+  persistence:
+    enabled: true
+    storageClass: rook-ceph-block
+    accessMode: ReadWriteOnce
+    size: 10Gi
+  input:
+    tcp:
+      service:
+        type: ClusterIP
+        externalTrafficPolicy: Local
+        loadBalancerIP:
+      ports:
+        - name: gelf-tcp
+          port: 12222
+        - name: beats
+          port: 5061
+    udp:
+      service:
+        type: ClusterIP
+      ports:
+        - name: gelf-udp
+          port: 12231      
+  rootUsername: "admin"
+  rootTimezone: America/Toronto
+  elasticsearch:
+    hosts: http://lacave-graylog-elasticsearch-client.graylog-system.svc:9200
+    #hosts: http://elastic:TxMrIY19J35d289TCQE0k78b@graylog-elasticsearch-es-http:9200
+    # Allow elasticsearch hosts to be fetched from a k8s secret
+    # {{ graylog.fullname }}-es will be used as uriSecretName if left empty
+    #uriSecretName: "graylog-elasticsearch-es-elastic-user"
+    #uriSecretKey: ""
+    #uriSSL: false
+
+  mongodb:
+    uri: mongodb://graylog:graylog@lacave-graylog-mongodb:27017/graylog
+    uriSecretName: lacave-graylog-mongodb
+  externalUri: graylog.kube.lacave.info
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: "nginx"
+      cert-manager.io/cluster-issuer: ca-lacave-issuer
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    hosts:
+      - graylog.kube.lacave.info
+    tls:
+      - hosts:
+        - graylog.kube.lacave.info
+        secretName: graylog-lacave-tls
+  metrics:
+    ## If true, prometheus annotations will be attached
+    ##
+    enabled: true

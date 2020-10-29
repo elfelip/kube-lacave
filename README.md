@@ -1153,8 +1153,53 @@ Créer les inputs suivants:
     gelf-tcp: port 12222
     gelf-udp: port 12231
     beats: port 5061
-    
+
 # Visibilité
+## Jaeger tracing
+On utilise l'opérateur Jaeger: https://www.jaegertracing.io/docs/1.20/operator/
+### Opérateur
+Installer l'opérateur:
+    kubectl create namespace observability
+    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/crds/jaegertracing.io_jaegers_crd.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/service_account.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role_binding.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/operator.yaml
+Activer les rôles pour avoir une portée sur tout le cluster.
+    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role.yaml
+    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role_binding.yaml
+On peut vérifier que l'opérateur est bien fonctionnel.
+    kubectl get deployment -n observability
+    NAME              READY   UP-TO-DATE   AVAILABLE   AGE
+    jaeger-operator   1/1     1            1           117s
+
+### Installation de Jaeger
+Voici les étapes:
+
+Créer un secret contenant l'identifiant et le mot de passe pour se connecter à Elasticsearch.
+    kubectl create secret generic jaeger-es-secret --from-literal=ES_PASSWORD=$(kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d) --from-literal=ES_USERNAME=elastic -n observability
+Copier le secret contenant le certificat de Elasticsearch dans le namespace observabitility
+    kubectl get secret kube-lacave-elasticsearch-es-http-certs-public --namespace=elastic-system -oyaml | grep -v '^\s*namespace:\s' | kubectl apply --namespace=observability -f -
+Installer Jaeger:
+    kubectl create -f resources/jaeger/lacave-jaeger-manifest.yaml -n observability
+On peut accéder à la console web par un port forward:
+    kubectl port-forward svc/lacave-jaeger-query -n observability 16686:16686
+L'URL est alors http://localhost:16686
+
+### Ajout de la source de données dans Grafana
+On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Jaeger.
+Se connecter à Grafana
+Dans le menu de Configuration -> Datasource.
+Cliquer Add Datasource
+Choisir Jaeger
+Entrer les informations suivantes:
+    Name: Jaeger
+    HTTP:
+        URL: http://lacave-jaeger-query.observability.svc:16686
+        Access: Server
+Cliquer Save and Test
+
+## Weavescope 
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
 
 Pour instller Weavescope, utiliser la commande suivante:
