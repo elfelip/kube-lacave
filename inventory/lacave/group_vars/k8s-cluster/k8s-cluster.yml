@@ -20,12 +20,8 @@ kube_users_dir: "{{ kube_config_dir }}/users"
 kube_api_anonymous_auth: true
 
 ## Change this to use another Kubernetes version, e.g. a current beta release
-#kube_version: v1.18.5
-kube_version: v1.19.1
+kube_version: v1.19.3
 
-# kubernetes image repo define
-#kube_image_repo: "{{ gcr_image_repo }}/google-containers"
-kube_image_repo: "k8s.gcr.io"
 # Where the binaries will be downloaded.
 # Note: ensure that you've enough disk space (about 1G)
 #local_release_dir: "/tmp/releases"
@@ -72,6 +68,15 @@ kube_oidc_username_prefix: 'oidc:'
 kube_oidc_groups_claim: groups
 kube_oidc_groups_prefix: 'oidc:'
 
+## Variables to control webhook authn/authz
+# kube_webhook_token_auth: false
+# kube_webhook_token_auth_url: https://...
+# kube_webhook_token_auth_url_skip_tls_verify: false
+
+## For webhook authorization, authorization_modes must include Webhook
+# kube_webhook_authorization: false
+# kube_webhook_authorization_url: https://...
+# kube_webhook_authorization_url_skip_tls_verify: false
 
 # Choose network plugin (cilium, calico, contiv, weave or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
@@ -89,8 +94,20 @@ kube_service_addresses: 10.233.0.0/18
 kube_pods_subnet: 10.233.64.0/18
 
 # internal network node size allocation (optional). This is the size allocated
-# to each node on your network.  With these defaults you should have
-# room for 4096 nodes with 254 pods per node.
+# to each node for pod IP address allocation. Note that the number of pods per node is
+# also limited by the kubelet_max_pods variable which defaults to 110.
+#
+# Example:
+# Up to 64 nodes and up to 254 or kubelet_max_pods (the lowest of the two) pods per node:
+#  - kube_pods_subnet: 10.233.64.0/18
+#  - kube_network_node_prefix: 24
+#  - kubelet_max_pods: 110
+#
+# Example:
+# Up to 128 nodes and up to 126 or kubelet_max_pods (the lowest of the two) pods per node:
+#  - kube_pods_subnet: 10.233.64.0/18
+#  - kube_network_node_prefix: 25
+#  - kubelet_max_pods: 110
 kube_network_node_prefix: 24
 
 # The port the API Server will be listening on.
@@ -143,6 +160,19 @@ dns_mode: coredns
 enable_nodelocaldns: true
 nodelocaldns_ip: 169.254.25.10
 nodelocaldns_health_port: 9254
+# nodelocaldns_external_zones:
+# - zones:
+#   - example.com
+#   - example.io:1053
+#   nameservers:
+#   - 1.1.1.1
+#   - 2.2.2.2
+#   cache: 5
+# - zones:
+#   - https://mycompany.local:4453
+#   nameservers:
+#   - 192.168.0.53
+#   cache: 0
 # Enable k8s_external plugin for CoreDNS
 enable_coredns_k8s_external: false
 coredns_k8s_external_zone: k8s_external.local
@@ -229,10 +259,6 @@ kubeconfig_localhost: true
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 # kubectl_localhost: false
 
-
-#  Enable creation of QoS cgroup hierarchy, if true top level QoS and pod cgroups are created. (default true)
-# kubelet_cgroups_per_qos: true
-
 # A comma separated list of levels of node allocatable enforcement to be enforced by kubelet.
 # Acceptable options are 'pods', 'system-reserved', 'kube-reserved' and ''. Default is "".
 # kubelet_enforce_node_allocatable: pods
@@ -240,10 +266,10 @@ kubeconfig_localhost: true
 ## Optionally reserve resources for OS system daemons.
 # system_reserved: true
 ## Uncomment to override default values
-# system_memory_reserved: 512M
+# system_memory_reserved: 512Mi
 # system_cpu_reserved: 500m
 ## Reservation for master hosts
-# system_master_memory_reserved: 256M
+# system_master_memory_reserved: 256Mi
 # system_master_cpu_reserved: 250m
 
 # An alternative flexvolume plugin directory
@@ -258,7 +284,8 @@ supplementary_addresses_in_ssl_keys: [apiserver.kube.lacave.info]
 ## See https://github.com/kubernetes-sigs/kubespray/issues/2141
 ## Set this variable to true to get rid of this issue
 volume_cross_zone_attachment: false
-# Add Persistent Volumes Storage Class for corresponding cloud provider ( OpenStack is only supported now )
+## Add Persistent Volumes Storage Class for corresponding cloud provider (supported: in-tree OpenStack, Cinder CSI,
+## AWS EBS CSI, Azure Disk CSI, GCP Persistent Disk CSI)
 persistent_volumes_enabled: false
 
 ## Container Engine Acceleration
@@ -278,6 +305,7 @@ persistent_volumes_enabled: false
 # nvidia_driver_install_ubuntu_container: gcr.io/google-containers/ubuntu-nvidia-driver-installer@sha256:7df76a0f0a17294e86f691c81de6bbb7c04a1b4b3d4ea4e7e2cccdc42e1f6d63
 ## NVIDIA GPU device plugin image.
 # nvidia_gpu_device_plugin_container: "k8s.gcr.io/nvidia-gpu-device-plugin@sha256:0842734032018be107fa2490c98156992911e3e1f2a21e059ff0105b07dd8e9e"
+
 ## Support tls min version, Possible values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13.
 # tls_min_version: ""
 
@@ -308,3 +336,5 @@ persistent_volumes_enabled: false
 
 ## Amount of time to retain events. (default 1h0m0s)
 event_ttl_duration: "1h0m0s"
+##  Force regeneration of kubernetes control plane certificates without the need of bumping the cluster version
+force_certificate_regeneration: false
