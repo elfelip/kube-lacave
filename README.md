@@ -931,7 +931,7 @@ On utilise la charte helm kube-prometheus pour déployer l'opérateur Prometheus
 
 Ajouter le repository à votre installation de Helm
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+    helm repo add stable https://charts.helm.sh/stable
     helm repo update
 Créer le namespace monitoring
     kubectl create namespace monitoring
@@ -940,6 +940,9 @@ Installer la charte en utilisant les personnalisation de ce projet:
 
 Grafana est accessible à l'adresse http://grafana.kube.lacave.info
 L'utilisateur est admin et le mot de passe se retrouve dans le fichier kube-prometheus-helm-values.yaml
+On ajoute les dashboard suivants en allant dans le menu Dashboard -> Manage -> Import
+    Ceph: ID: 7056
+
 
 ### Service monitor
 Pour monitorer un composants, on doit crée une ressource ServiceMonitor qui décrit quel est le service de notre composant quyi expose les métriques pour Prometheus.
@@ -1008,6 +1011,31 @@ L'URL de kibana est https://kibana.kube.lacave.info
 
 Installer APM Server. Cette partie n'est pas fonctionnelle encore...
     kubectl apply -f resources/journalisation/apm/kube-lacave-apm-manifest.yaml
+
+### Ajout de la source de données dans Grafana
+On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Elasticsearch.
+Se connecter à Grafana
+Dans le menu de Configuration -> Datasource.
+Cliquer Add Datasource
+Choisir Elasticsearch
+Entrer les informations suivantes:
+    Name: Elasticsearch
+    HTTP:
+        URL: https://kube-lacave-elasticsearch-es-http.elastic-system.svc:9200
+        Access: Server
+    Auth: Cocher Basic auth et With CA Cert
+    Basic auth details:
+        User: elastic
+        Password: Lancer la commande suivante pour l'obtenir
+        kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
+    TLS Auth Details:
+        CA-cert: Lancer la commande suivante pour l'obtenir
+        kubectl get secret kube-lacave-elasticsearch-es-http-certs-public -o "jsonpath={.data['ca\.crt']}" -n elastic-system | base64 -d; echo
+    Elasticsearch details:
+        Version: 7.0+
+Cliquer Save and Test
+On ajoute les dashboard suivant en allant dans le menu Dashboard -> Manage -> Import
+    Elasticsearch: ID: 8715
 
 ## Graylog
 Graylog est aussi utilisé pour recueillir les journaux. On l'utilise pour les journaus applicatifs avec le module GELF.
@@ -1142,7 +1170,7 @@ Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
 Pour: http_external_uri = https://graylog.kube.lacave.info
 Arrêter les pods:
     kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
-Une fois tou les pods supprimé, démarrer les nouveaus pods:
+Une fois tous les pods supprimé, démarrer les nouveaus pods:
     kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
 
 L'interface de GRaylog est disponible par l'URL https://graylog.kube.lacave.info
@@ -1181,10 +1209,13 @@ Créer un secret contenant l'identifiant et le mot de passe pour se connecter à
 Copier le secret contenant le certificat de Elasticsearch dans le namespace observabitility
     kubectl get secret kube-lacave-elasticsearch-es-http-certs-public --namespace=elastic-system -oyaml | grep -v '^\s*namespace:\s' | kubectl apply --namespace=observability -f -
 Installer Jaeger:
-    kubectl create -f resources/jaeger/lacave-jaeger-manifest.yaml -n observability
-On peut accéder à la console web par un port forward:
+    kubectl create -f resources/jaeger/lacave-jaeger-manifest.yaml
+Un ingress est créé automatiquement par le manifest.
+On peut accéder à la console web par l'URL https://jaeger.kube.lacave.info
+Sinon, on peut utiliser le port forward    
     kubectl port-forward svc/lacave-jaeger-query -n observability 16686:16686
 L'URL est alors http://localhost:16686
+
 
 ### Ajout de la source de données dans Grafana
 On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Jaeger.
@@ -1348,9 +1379,12 @@ Le cluster Kubernetes a 4 noeuds dont 3 sont munis d'un disque disponible pour C
     osd.1 kube04
     osd.2 kube02
 L'OSD corrompu est le osd.0 dans cet exemple.
-La première étape est d'ajouter de l'espace disque sur un noeud du cluster ou il n'y a pas de OSD. Dans notre cas kube01.
-Puisque je n'avais pas de disque supplémentaire, j'a enlevé le disque du serveur corrompue (kube03) et je l'ai branché. sur le serveur libre kube01.
-Pour le rendre disponible, il faut effacer le disque en se connectant par ssh sur le serveur kube01.
+
+Arrêter l'opérateur rook-ceph
+    kubectl scale deployment -n rook-ceph rook-ceph-operator --replicas 0
+Supprimer le déploiement de l'OSD corrompu du serveur Kubernetes
+    kubectl delete deployment rook-ceph-osd-0 -n rook-ceph
+Pour rendre le disque disponible à nouveau ou pour récupérer un disque contenant déjà des données, il faut effacer son contenu en se connectant par ssh sur le serveur kube01.
 Identifier le device associé au nouveau disque, dans mon cas /dev/sdb, et lancer la commande suivante: 
     DISK="/dev/sdb"
     # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
@@ -1358,25 +1392,20 @@ Identifier le device associé au nouveau disque, dans mon cas /dev/sdb, et lance
     sgdisk --zap-all $DISK
     # Clean hdds with dd
     dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
-Pour accélérer la détection du nouveau disque et la création du nouvle osd, on peut repartir l'opérateur:
-    kubectl -n rook-ceph delete pod -l app=rook-ceph-operator
-Un fois le nouveau noeud OSD configuré on peut supprimer l'ancien:
-Arrêter l'opérateur rook-ceph
-    kubectl scale deployment -n rook-ceph rook-ceph-operator --replicas 0
-Supprimer le déploiement de l'OSD corrompu du serveur Kubernetes
-    kubectl delete deployment rook-ceph-osd-0 -n rook-ceph
+Un fois le nouveau disque disponible, on peut supprimer l'ancien OSD:
 Se connecter dans le pod ceph-toolbox:
     kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath="{.items[0].metadata.name}") bash
 Exécuter les commandes suivantes pour supprimer l'OSD de la configuration de CEPH
-    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd down osd.0
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# OSD=0
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd down osd.${OSD}
     osd.0 is already down. 
-    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd out osd.0
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd out osd.${OSD}
     osd.0 is already out. 
-    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd crush remove osd.0
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd crush remove osd.${OSD}
     removed item id 0 name 'osd.0' from crush map
-    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph auth del osd.0
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph auth del osd.${OSD}
     updated
-    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd rm osd.0
+    [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd rm osd.${OSD}
     removed osd.0    
 On peut surveiller l'avancement de la réplication avec la commande suivante:
     watch ceph health

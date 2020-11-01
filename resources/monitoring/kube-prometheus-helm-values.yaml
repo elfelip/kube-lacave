@@ -21,12 +21,33 @@ alertmanager:
 grafana:
   enabled: true
   namespaceOverride: "monitoring"
-
+  image:
+    repository: grafana/grafana
+    tag: 7.3.0
+    sha: ""
+    pullPolicy: IfNotPresent
   ## Deploy default dashboards.
   ##
   defaultDashboardsEnabled: true
 
   adminPassword: prom-operator
+  ## Enable persistence using Persistent Volume Claims
+  ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+  ##
+  persistence:
+    type: pvc
+    enabled: false
+    storageClassName: rook-ceph-block
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    # annotations: {}
+    finalizers:
+      - kubernetes.io/pvc-protection
+    # subPath: ""
+    # existingClaim:
+  plugins: 
+  - grafana-piechart-panel
 
   ingress:
     ## If true, Grafana Ingress will be created
@@ -146,10 +167,10 @@ prometheus:
   prometheusSpec:
     ## Image of Prometheus.
     ##
-    #image:
-    #  repository: quay.io/prometheus/prometheus
-    #  tag: v2.18.2
-    #  sha: ""
+    image:
+      repository: quay.io/prometheus/prometheus
+      tag: v2.22.0
+      sha: ""
 
     ## How long to retain metrics
     ##
@@ -162,9 +183,13 @@ prometheus:
     ## Namespaces to be selected for ServiceMonitor discovery.
     ## See https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#namespaceselector for usage
     ##
-    serviceMonitorNamespaceSelector: 
-      any: true
-
+    #serviceMonitorNamespaceSelector: 
+    #  any: true
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector:
+      matchExpressions:
+      - key: "non-existent-label"
+        operator: "DoesNotExist"
     ## Prometheus StorageSpec for persistent data
     ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/user-guides/storage.md
     ##
