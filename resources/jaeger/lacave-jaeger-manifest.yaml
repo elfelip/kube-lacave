@@ -1,7 +1,27 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: jaeger-lacave-tls
+  namespace: observability
+spec:
+  secretName: jaeger-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+  commonName: jaeger.kube.lacave.info
+  organization:
+  - Lacave CA
+  dnsNames:
+  - jaeger.kube.lacave.info
+---
 apiVersion: jaegertracing.io/v1
 kind: Jaeger
 metadata:
   name: lacave-jaeger
+  namespace: observability
 spec:
   strategy: production
   collector:
@@ -10,6 +30,18 @@ spec:
       limits:
         cpu: 100m
         memory: 128Mi
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: "nginx"
+      cert-manager.io/cluster-issuer: ca-lacave-issuer
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    hosts:
+      - jaeger.kube.lacave.info
+    tls:
+      - hosts:
+        - jaeger.kube.lacave.info
+        secretName: jaeger-lacave-tls
   storage:
     type: elasticsearch
     esIndexCleaner:
@@ -30,4 +62,4 @@ spec:
   volumes:
     - name: certificates
       secret:
-        secretName: kube-lacave-elasticsearch-es-http-certs-public    
+        secretName: kube-lacave-elasticsearch-es-http-certs-public

@@ -1,0 +1,16 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: monitoring
+  name: jaeger-operator-metrics
+  labels:
+    release: lacave-prom
+spec:
+  selector:
+    matchLabels:
+      name: jaeger-operator
+  endpoints:
+  - port: http-metrics
+    path: '/metrics'
+    interval: 15s
