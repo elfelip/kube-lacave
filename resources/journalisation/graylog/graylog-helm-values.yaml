@@ -22,7 +22,7 @@ tags:
 
 graylog:
   image:
-    repository: graylog/graylog:4.0.0-beta.2-1
+    repository: graylog/graylog:4.0.0-beta.3-1
   persistence:
     enabled: true
     storageClass: rook-ceph-block

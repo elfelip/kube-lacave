@@ -922,7 +922,53 @@ S'assurer que tous les noeuds du cluster sont Ready:
     kube04   Ready    worker   99d   v1.18.5
 Pour mettre à jour le cluster, lancer la commande suivante à partir du serveur de gestion Ansible.
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/upgrade-cluster.yml -e kube_version=v1.19.1
-    
+
+## Supprimer un noeud
+Voici les étapes pour supprimer un noeud du cluster Kubernetes.
+Sur le serveur de gestion, se déplacer dans le projet kube-lacave.
+S'assurer que le clone/checkout/pull du sous projet kubespray a été fait.
+Supprimer le noeud avec la commande suivante:
+    ansible-playbook -i inventory/lacave/inventory.ini -e node=kube04 -e reset_nodes=false kubespray/remove-node.yml
+Il est possible que lq dernière étape ne se fasse pas automatiquement. On peut alors finaliser la suppression du noeud avec la commande suivante:
+    kubectl delete node kube04
+Enlever le noeud de l'inventaire: inventory/lacave/inventory.ini
+    # ## Configure 'ip' variable to bind kubernetes services on a
+    # ## different ip than the default iface
+    # ## We should set etcd_member_name for etcd cluster. The node that is not a etcd member do not need to set the value, or can set the empty string value.
+    [all]
+    kube01
+    kube02
+    kube03
+    #kube04
+    # ## configure a bastion host if your nodes are not directly reachable
+    # bastion ansible_host=x.x.x.x ansible_user=some_user
+
+    [kube-master]
+    kube01
+    kube03
+
+    [etcd]
+    kube01
+    kube02
+    kube03
+
+    [kube-node]
+    kube01
+    kube02
+    kube03
+    #kube04
+
+    [calico-rr]
+
+    [k8s-cluster:children]
+    kube-master
+    kube-node
+    calico-rr    
+Ajouter, committer et pousser la modificiation dans le dépôt git:
+    git add -- inventory/lacave/inventory.ini
+    git commit -m "Enlever le noeud kube04"
+    git push
+
 # Monitoring
 La solution la plus populaire pour la surveillance d'un cluster Kubernetes est la combinaison Prometheus et Grafana.
 
@@ -1181,6 +1227,23 @@ Créer les inputs suivants:
     gelf-tcp: port 12222
     gelf-udp: port 12231
     beats: port 5061
+
+### Mise à jour de Graylog
+Pour mettre à jour Graylog, modifier la section suivante du fichier resources/journalisation/graylog/graylog-helm-values.yaml
+    graylog:
+    image:
+        repository: graylog/graylog:4.0.0-beta.3-1
+Mettre à jour la charte avec la commande suivante:
+    helm upgrade --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
+Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
+Lancer la commande suivante pour modifier le configmap:
+    kubectl edit configmap lacave-graylog -n graylog-system
+Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
+Pour: http_external_uri = https://graylog.kube.lacave.info
+Arrêter les pods:
+    kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
+Une fois tous les pods supprimé, démarrer les nouveaus pods:
+    kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
 
 # Visibilité
 ## Jaeger tracing

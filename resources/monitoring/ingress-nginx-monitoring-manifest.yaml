@@ -1,0 +1,49 @@
+#apiVersion: monitoring.coreos.com/v1
+#kind: PodMonitor
+#metadata:
+#  name: ingress-monitor
+#  namespace: monitoring
+#spec:
+#  podMetricsEndpoints:
+#  - interval: 5s
+#    targetPort: 10254
+#    path: /metrics
+#  selector:
+#    matchLabels:
+#      app.kubernetes.io/name: ingress-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: ingress-nginx
+  name: ingress-metrics-service
+  labels:
+    serviceapp: ingress-metrics
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "10254"
+spec:
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+  ports:
+    - name: metrics
+      protocol: TCP
+      port: 10254
+      targetPort: 10254
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: monitoring
+  name: ingress-monitor
+  labels:
+    release: lacave-prom
+spec:
+  selector:
+    matchLabels:
+      serviceapp: ingress-metrics
+  endpoints:
+  - port: metrics
+    path: '/metrics'
+    interval: 15s

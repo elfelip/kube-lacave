@@ -1,0 +1,31 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: monitoring
+  name: jaeger-operator-metrics
+  labels:
+    release: lacave-prom
+spec:
+  selector:
+    matchLabels:
+      name: jaeger-operator
+  endpoints:
+  - port: http-metrics
+    path: '/metrics'
+    interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: jaeger-collector
+  namespace: monitoring
+spec:
+  podMetricsEndpoints:
+  - interval: 5s
+    targetPort: 14269
+    path: /metrics
+  selector:
+    matchLabels:
+      app: jaeger
+      app.kubernetes.io/component: collector
