@@ -16,7 +16,7 @@ spec:
   - login.kube.lacave
   - login.kube.lacave.info
 ---
-kind: Deployment
+kind: StatefulSet
 apiVersion: apps/v1
 metadata:
   name: login-lacave
@@ -24,12 +24,13 @@ metadata:
   labels:
     app: login-lacave
 spec:
-  replicas: 3
-  strategy:
+  serviceName: login-lacave
+  replicas: 1
+  updateStrategy:
     type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
+    #rollingUpdate:
+    #  maxSurge: 1
+    #  maxUnavailable: 1
   selector:
     matchLabels:
       app: login-lacave

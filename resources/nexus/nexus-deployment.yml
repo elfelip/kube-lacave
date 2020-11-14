@@ -66,9 +66,9 @@ spec:
         runAsGroup: 0
         fsGroup: 0
       volumes:
-#      - name: nexus-data
-#        persistentVolumeClaim:
-#          claimName: nexus3-claim
+      - name: nexus-data-bck
+        persistentVolumeClaim:
+          claimName: nexus3-local-claim
       - name: nexus-ceph-data
         persistentVolumeClaim:
           claimName: nexus3-ceph-claim
@@ -78,26 +78,26 @@ spec:
         ports:
         - containerPort: 8081
         volumeMounts:
-#        - name: nexus-data
-#          mountPath: /nexus-data
+        - name: nexus-data-bck
+          mountPath: /nexus-data-bck
         - name: nexus-ceph-data
           mountPath: /nexus-data
 ---
-#kind: PersistentVolumeClaim
-#apiVersion: v1
-#metadata:
-#    name: nexus3-claim
-#    namespace: nexus
-#    labels:
-#        app: nexus
-#spec:
-#    accessModes:
-#    - ReadWriteOnce
-#    resources:
-#        requests:
-#            storage: 100Gi
-#    storageClassName: local-path
-#---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+    name: nexus3-local-claim
+    namespace: nexus
+    labels:
+        app: nexus
+spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+        requests:
+            storage: 100Gi
+    storageClassName: local-path
+---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:

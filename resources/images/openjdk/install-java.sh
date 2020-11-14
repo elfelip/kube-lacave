@@ -2,10 +2,10 @@
 EPEL_PACKAGE_URL=${EPEL_URL:-https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm}
 case "$1" in
 	8)
-		yum install -y java-1.8.0-openjdk java-1.8.0-openjdk-devel
+		dnf install -y java-1.8.0-openjdk java-1.8.0-openjdk-devel
 		;;
 	9)
-		yum -y install unzip
+		dnf -y install unzip
 		PATCH=$(echo $JDK_VERSION| awk -F+ '{print $2}')
 		curl -k ${NEXUS_URL}/jdk-${JDK_VERSION}_linux-x64_ri.zip -o /tmp/openjdk.zip
 		unzip /tmp/openjdk.zip -d /opt
@@ -17,7 +17,7 @@ case "$1" in
 		rm /tmp/openjdk.tar.gz
 		;;
 	11)
-		yum install -y java-11-openjdk java-11-openjdk-devel
+		dnf install -y java-11-openjdk java-11-openjdk-devel
 		;;
 	12)
 		curl -k ${NEXUS_URL}/openjdk-${JDK_VERSION}_linux-x64_bin.tar.gz -o /tmp/openjdk.tar.gz
@@ -25,8 +25,8 @@ case "$1" in
 		rm /tmp/openjdk.tar.gz
 		;;
 	latest)
-		yum install -y ${EPEL_PACKAGE_URL}
-		yum install -y java-latest-openjdk java-latest-openjdk-devel java-latest-openjdk-jmods
+		dnf install -y ${EPEL_PACKAGE_URL}
+		dnf install -y java-latest-openjdk java-latest-openjdk-devel java-latest-openjdk-jmods
 		;;
 	*)
 		echo Version $JDK_VERSION de OpenJDK non supportée

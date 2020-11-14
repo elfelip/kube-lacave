@@ -1,0 +1,16 @@
+FROM node:13-alpine
+
+# Installer les outils de développement nécessaires
+RUN apk add --no-cache python make g++
+
+RUN apk add --no-cache chromium \
+&& apk add --no-cache bash
+
+ENV CHROME_BIN /usr/bin/chromium-browser
+
+RUN npm install -g @angular/cli
+
+RUN adduser -h /home/test -s /bin/bash -u 12311 -D test
+
+RUN ln -s /usr/local/bin/npm /usr/bin/npm
+RUN ln -s /usr/local/bin/ng /usr/bin/ng
