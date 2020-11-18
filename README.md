@@ -1755,6 +1755,7 @@ Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans 
 ## Installation de Fedora CoreOS
 J'ai utilisé un DVD fait à partir de l'ISO disponible sur le site de Fedora.
 
+### kube01
 Démarrer à partir du CD.
 
 S'il y a un système d'exploitation sur le disque de destination, il peut être nécessaire de le remettre à 0 en utilisant les commandes suivantes:
@@ -1768,6 +1769,42 @@ Redémarrer ensuite le système
     sudo init 6
 On peut ensuite installer l'OS avec la commande suivante:
     sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube01.ign --insecure-ignition
-
 L'option --insecure-ignition est nécessaire sir le serveur Web n'est pas en https.
 
+Répéter sur les autres noeuds en utilisant les fichier kube0X.ign respectifs:
+
+### kube02
+
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube02.ign --insecure-ignition
+
+### kube03
+
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube03.ign --insecure-ignition
+
+### kube04
+
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube04.ign --insecure-ignition
+
+## Ajout du certifact de du root CA dans les trust stores des noeuds
+Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire les opérations suivantes sur tous les noeuds:
+
+    scp resources/cert/lacave-root.pem root@kube01:/etc/pki/ca-trust/source/anchors
+    ssh root@kube01 update-ca-trust
+    scp resources/cert/lacave-root.pem root@kube02:/etc/pki/ca-trust/source/anchors
+    ssh root@kube02 update-ca-trust
+    scp resources/cert/lacave-root.pem root@kube03:/etc/pki/ca-trust/source/anchors
+    ssh root@kube03 update-ca-trust
+    scp resources/cert/lacave-root.pem root@kube04:/etc/pki/ca-trust/source/anchors
+    ssh root@kube04 update-ca-trust
+
+Actuellement, l'authentification OpenID Connect est ajouté dans la configuration du cluster.
+Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave-root.pem dans les répertopires /etc/kubernetes/ssl de chacun des noeuds du cluster.
+
+    ssh root@kube01 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube01:/etc/kubernetes/ssl
+    ssh root@kube02 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube02:/etc/kubernetes/ssl
+    ssh root@kube03 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube03:/etc/kubernetes/ssl
+    ssh root@kube04 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube04:/etc/kubernetes/ssl    
