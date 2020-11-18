@@ -624,14 +624,14 @@ Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par 
 ## Créer l'image Keycloak avec les scripts supportant le clustering.
 Pour mettre Keycloak en cluster, on utilise le protocol JDBC_PING pour le Jgroups. Pour ce faire, des scripts doivent être ajouté à l'image de base de Keycloak. Ces scripts sont inclus dans le présent projet, pour créer l'image Keycloak, lancer les commmandes suivantes:
 
-    docker build --tag docker.lacave.info/lacave/keycloak:10.0.2 resources/keycloak/image/
-    docker push docker.lacave.info/lacave/keycloak:10.0.2
+    docker build --tag docker.lacave.info/lacave/keycloak:11.0.3 resources/keycloak/image/
+    docker push docker.lacave.info/lacave/keycloak:11.0.3
 
 ## Installation de Keycloak
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
 Lancer le manifest suivant pour créer le serveur Keycloak.
 
-    kubectl create -f resources/keycloak/keycloak-deployment.yaml
+    kubectl create -f resources/keycloak/loginlacave-keycloak-manifest.yaml
 
 S'assurer que le DNS contient une entrée login.kube.lacave.info qui pointe vers les adresses IP des noeuds du cluster.
 
@@ -1606,4 +1606,168 @@ Calico (réseau):
     calicoctl get nodes -o yaml
  
  
+
+# Fedora CoreOS
+Voici les instructions pour utiliser Fedora CoreOS au lieu de Flatcar Linux
+
+## Fichier ignition
+Pour la configurtation des serveurs, on créé un fichier Yaml.
+
+Pour nos besoins, le fichier contient le user root avec la clé rsa à ajouter à sez authorozed_keys, une adresse IP fixe et un nom d'hôte.
+
+La structure est la suivante pour nos 4 machines:
+
+    kube01.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=eth0
+
+            [ipv4]
+            method=manual
+            addresses=192.168.1.21/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube01
+    kube02.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=eth0
+
+            [ipv4]
+            method=manual
+            addresses=192.168.1.22/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube02
+    kube03.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=eth0
+
+            [ipv4]
+            method=manual
+            addresses=192.168.1.23/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube03
+    kube04.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/enp3s0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=enp3s0
+
+            [ipv4]
+            method=manual
+            addresses=192.168.1.24/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube01
+
+
+Pour créer le fichier ignition en format JSON utilisable par le processus d'installation, lancer les commandes suivantes:
+
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube01.fcc > kube01.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube02.fcc > kube02.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube03.fcc > kube03.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube04.fcc > kube04.ign
+
+Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans mopn cas, je les ai mis sur mon serveur elrond qui est en Ubuntu et qui a Apache installé dessus, dans le répertoire /var/www/html/kubernetes
+
+## Installation de Fedora CoreOS
+J'ai utilisé un DVD fait à partir de l'ISO disponible sur le site de Fedora.
+
+Démarrer à partir du CD.
+
+S'il y a un système d'exploitation sur le disque de destination, il peut être nécessaire de le remettre à 0 en utilisant les commandes suivantes:
+    DISK="/dev/sda"
+    # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
+    # You will have to run this step for all disks.
+    sudo sgdisk --zap-all $DISK
+    # Clean hdds with dd
+    sudo dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
+Redémarrer ensuite le système
+    sudo init 6
+On peut ensuite installer l'OS avec la commande suivante:
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube01.ign --insecure-ignition
+
+L'option --insecure-ignition est nécessaire sir le serveur Web n'est pas en https.
 

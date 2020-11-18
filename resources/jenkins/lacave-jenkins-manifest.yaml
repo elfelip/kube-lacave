@@ -1,8 +1,14 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: jenkins-system
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: jenkins
-  namespace: inspq
+  namespace: jenkins-system
   labels:
     app: jenkins
 spec:
@@ -16,11 +22,9 @@ spec:
       labels:
         app: jenkins
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: kube02
       containers:
         - name: jenkins
-          image: elfelip01/jenkins:latest
+          image: docker.lacave.info/jenkins:latest
           imagePullPolicy: Always
           env:
             - name: JAVA_OPTS
@@ -37,11 +41,11 @@ spec:
               mountPath: /var/run/docker.sock
       initContainers:
         - name: initconfig
-          image: elfelip01/jenkins:latest
+          image: docker.lacave.info/jenkins:latest
           command:
             - bash
             - -c
-            - sudo chown -R 1000:1000 /var/jenkins_home && git config --global user.name "Philippe Gauthier" && git config --global user.email "philippe.gauthier@inspq.qc.ca" && git config --global credential.helper store
+            - /prepare.sh
           volumeMounts:
             - name: jenkins-home
               mountPath: /var/jenkins_home
@@ -58,13 +62,12 @@ spec:
         - name: docker-sock
           hostPath:
             path: /var/run/docker.sock
-            
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: jenkins-claim
-  namespace: inspq
+  namespace: jenkins-system
   labels:
     app: jenkins
 spec:
@@ -73,12 +76,12 @@ spec:
   resources:
     requests:
       storage: 40Gi
-  storageClassName: local-path
+  storageClassName: rook-ceph-block
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: inspq
+  namespace: jenkins-system
   name: jenkins-service
 spec:
   selector:
@@ -89,19 +92,41 @@ spec:
     port: 8080
     targetPort: 8080
 ---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: jenkins-lacave-tls
+  namespace: jenkins-system
+spec:
+  secretName: jenkins-lacave-tls
+  issuerRef:
+    name: ca-lacave-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+  commonName: jenkins.kube.lacave.info
+  organization:
+  - Lacave CA
+  dnsNames:
+  - jenkins.kube.lacave.info
+---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
-    namespace: inspq
+    namespace: jenkins-system
     name: ingress-jenkins
     annotations:
         kubernetes.io/ingress.class: "nginx"
 spec:
-    rules:
-    - host: jenkins.lacave
-      http:
-        paths:
-        - path: /
-          backend:
-            serviceName: jenkins-service
-            servicePort: 8080
+  tls:
+  - hosts:
+    - jenkins.kube.lacave.info
+    secretName: jenkins-lacave-tls
+  rules:
+  - host: jenkins.kube.lacave.info
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: jenkins-service
+          servicePort: 8080

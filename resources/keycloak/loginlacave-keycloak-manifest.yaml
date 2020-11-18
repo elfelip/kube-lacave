@@ -25,7 +25,7 @@ metadata:
     app: login-lacave
 spec:
   serviceName: login-lacave
-  replicas: 1
+  replicas: 3
   updateStrategy:
     type: RollingUpdate
     #rollingUpdate:
@@ -43,7 +43,7 @@ spec:
       - name: regcred
       containers:
       - name: keycloak
-        image: docker.lacave.info/lacave/keycloak:10.0.2
+        image: docker.lacave.info/lacave/keycloak:11.0.3
         imagePullPolicy: Always
         env:
         - name: KEYCLOAK_USER
@@ -76,10 +76,20 @@ spec:
           value: standalone-ha-lacave.xml
         - name: JGROUPS_DISCOVERY_PROTOCOL
           value: JDBC_PING
+        - name: JGROUPS_DISCOVERY_PROPERTIES
+          value: clear_table_on_view_change=true,register_shutdown_hook=true
 #        - name: JGROUPS_DISCOVERY_PROTOCOL
 #          value: dns.PING
 #        - name: JGROUPS_DISCOVERY_PROPERTIES
 #          value: "dns_query=login-lacave-service"
+        - name: GRAYLOG_URL
+          value: lacave-graylog-udp.graylog-system.svc
+        - name: GRAYLOG_PORT
+          value: "12231"
+        - name: GRAYLOG_HOST_BASE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         ports:
         - containerPort: 8080
         readinessProbe:
