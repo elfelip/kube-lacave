@@ -1755,6 +1755,12 @@ Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans 
 ## Installation de Fedora CoreOS
 J'ai utilisé un DVD fait à partir de l'ISO disponible sur le site de Fedora.
 
+Pour que ca fonctionne avec Crio et Fedora CoreOS, on doit faire manuellement le correctif suivant à Kubespray.
+https://github.com/kubernetes/kubeadm/issues/1495
+
+La modification a été poussée dans mon repository de Kubespray:
+    https://github.com/elfelip/kubespray.git
+
 ### kube01
 Démarrer à partir du CD.
 
