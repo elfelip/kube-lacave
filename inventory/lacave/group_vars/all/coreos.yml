@@ -1,2 +1,9 @@
 ## Does coreos need auto upgrade, default is true
 # coreos_auto_upgrade: true
+
+fedora_coreos_packages:
+  - python
+  - python3-libselinux
+  #- ethtool                 # required in kubeadm preflight phase for verifying the environment
+  - ipset                   # required in kubeadm preflight phase for verifying the environment
+  - conntrack-tools         # required by kube-proxy
