@@ -3,7 +3,7 @@
 #ansible_become: root
 ansible_user: root
 #ansible_become_user: root
-ansible_python_interpreter: /usr/bin/python
+ansible_python_interpreter: /usr/bin/python3
 
 ## Directory where etcd data stored
 etcd_data_dir: /var/lib/etcd
