@@ -24,5 +24,4 @@
   - name: Creer l'utilisateur admin pour le tableau de bord Kubernetes
     k8s:
       state: present
-      kubeconfig: "{{ ansible_env.HOME }}/.kube/config"
-      src: "{{ lookup('file','resources/dashboard-adminuser.yml') }}"    
+      definition: "{{ lookup('file','resources/dashboard-adminuser.yml') }}"    
