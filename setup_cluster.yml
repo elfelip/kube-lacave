@@ -1,0 +1,27 @@
+- hosts: management
+  vars:
+    helm_install_url: https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
+
+  tasks:
+  - name: Installer le module Kubernetes pour Python3
+    apt:
+      name: python3-kubernetes
+      state: present
+    when: ansible_os_family == "Debian"
+  - name: Installer les packages Python
+    pip:
+      name: openshift
+      extra_args: --user
+      state: present
+  - name: Créer le répertoire pour la configuration de kubectl
+    file:
+      dest: "{{ ansible_env.HOME }}/.kube"
+      state: directory
+  - name: Copier le fichier qui contient le crédentiel Admin
+    copy:
+      src: inventory/lacave/artifacts/admin.conf
+      dest: "{{ ansible_env.HOME }}/.kube/config"
+  - name: Creer l'utilisateur admin pour le tableau de bord Kubernetes
+    k8s:
+      state: present
+      src: resources/dashboard-adminuser.yml      

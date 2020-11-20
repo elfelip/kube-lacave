@@ -16,6 +16,19 @@ La deuxième étape est d'installer Ansible: https://docs.ansible.com/ansible/la
     sudo apt-add-repository --yes --update ppa:ansible/ansible
     sudo apt install ansible
 
+## Installer le dépôt du projet
+
+On doit ensuite faire un clone du projet avec la commande git:
+
+git clone --recurse-submodules https://github.com/elfelip/kube-lacave.git
+
+Se déplacer ensuite dans le répertoire kube-lacave/kubespray
+Obtenir toute les branches:
+    git fetch --all
+Faire une checkout de la branche qui contient le correctif pour Fedora CoreOS
+    git checkout correctif_fedora
+    git pull origin correctif_fedora
+
 # Configuration DNS
 
 Dans notre installation, Un serveur DNS bind est installé sur le serveur de povisionning.
@@ -224,29 +237,8 @@ Répéter sur les autres noeuds en utilisant les fichier kube0X.ign respectifs:
     sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube04.ign --insecure-ignition
 
 ## Ajout du certifact de du root CA dans les trust stores des noeuds
-Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire les opérations suivantes sur tous les noeuds:
-
-    scp resources/cert/lacave-root.pem root@kube01:/etc/pki/ca-trust/source/anchors
-    ssh root@kube01 update-ca-trust
-    scp resources/cert/lacave-root.pem root@kube02:/etc/pki/ca-trust/source/anchors
-    ssh root@kube02 update-ca-trust
-    scp resources/cert/lacave-root.pem root@kube03:/etc/pki/ca-trust/source/anchors
-    ssh root@kube03 update-ca-trust
-    scp resources/cert/lacave-root.pem root@kube04:/etc/pki/ca-trust/source/anchors
-    ssh root@kube04 update-ca-trust
-
-Actuellement, l'authentification OpenID Connect est ajouté dans la configuration du cluster.
-Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave-root.pem dans les répertopires /etc/kubernetes/ssl de chacun des noeuds du cluster.
-
-    ssh root@kube01 mkdir -p /etc/kubernetes/ssl
-    scp resources/cert/lacave-root.pem root@kube01:/etc/kubernetes/ssl
-    ssh root@kube02 mkdir -p /etc/kubernetes/ssl
-    scp resources/cert/lacave-root.pem root@kube02:/etc/kubernetes/ssl
-    ssh root@kube03 mkdir -p /etc/kubernetes/ssl
-    scp resources/cert/lacave-root.pem root@kube03:/etc/kubernetes/ssl
-    ssh root@kube04 mkdir -p /etc/kubernetes/ssl
-    scp resources/cert/lacave-root.pem root@kube04:/etc/kubernetes/ssl    
-
+Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire exécuter le script suivant:
+    ./copycert.sh
 
 # Préparation de l'inventaire Ansible de Kubespray
 
@@ -294,7 +286,7 @@ Les configurations spécifiques à chaque noeuds sont dans les fichiers ru répe
 
 Pour spécifier la version de Kubernetes à déployer on modifi la variable suivante du fichier group_vars/k8s-cluster/k8s-cluster.yml
 
-    kube_version: v1.19.1
+    kube_version: v1.19.3
 
 ## Options d'authentification OpenID Connect pour le serveur API
 
@@ -390,8 +382,14 @@ S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de dépl
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
+Sur Fedora Core OS, on recoit le message suivant:
+TASK [bootstrap-os : Reboot immediately for updated ostree, please run playbook again if failed first time.] *****************
+On doir donc attendre que les serveurs redémarrent et relancer le playbook
+
 Assigner un rôle au noeud kube02:
     kubectl label node kube02 node-role.kubernetes.io/worker=worker
+
+Les informations de connexion au cluster sont automatiquement ajouté dans le répertoire inventaire/lacave/
 
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
