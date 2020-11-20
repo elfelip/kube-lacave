@@ -40,78 +40,200 @@ La chaine de confiance ainsi que les clés de ce PKI sont incluse dans le projet
 
 # Préparation des noeuds
 La première étape est d'installer un système d'exploitation sur les noeuds physiques ou virtuel.
-Pour ce projet on a choisi Flatcar Container Linux qui est un fork de CoreOS suite à son achat par RedHat. On aurait aussi pu le faire avec Fedora CoreOS mais avec leur abandon de Docker, ca redait le passage de CoreOS vers Fedora un peu plus complexe.
+Pour ce projet on a choisi Fedora CoreOS avec l'engin de conteneur crio. On aurait aussi pu utiliser Flatcar Container Linux qui est un fork de CoreOS suite à son achat par RedHat.
 
-J'utilise le CD d'installation de Flatcar pour provisionner manuellement les noeuds.
-La première étape est de graver sur un CD/DVD ou une clé USB l'ISO de Flatcat https://docs.flatcar-linux.org/os/booting-with-iso/
+## Fichier ignition
+Pour la configurtation des serveurs, on créé un fichier Yaml.
 
-La deuxième étape est de créer les fichiers d'intialisation pour les 4 noeuds. On créé ces fichiers sur le serveur de provisionning.
-Voici la strcture du fichier. 
-    kubeXX-ignition.json
-    {
-    "ignition": {
-        "version": "2.2.0"
-    },
-    "passwd": {
-        "users": [
-        {
-            "name": "root",
-            "sshAuthorizedKeys": [
-            "Copier Le contenue du fichier .ssh/id_rsa.pub de l'utilisateur principal du serveur de provisioning"
-            ]
-        }
-        ]
-    },
-    "networkd": {
-        "units": [
-        {
-            "contents": "[Match]\nName=eno1\n\n[Network]\nAddress=192.168.1.XX/24\nGateway=192.168.1.1\nDNS=192.168.1.10",
-            "name": "00-eno1.network"
-        }
-        ]
-    },
-    "storage": {
-        "files": [{
-        "filesystem": "root",
-        "path": "/etc/hostname",
-        "mode": 420,
-        "contents": { "source": "data:,kubeXX" }
-        }]
-    }
+Pour nos besoins, le fichier contient le user root avec la clé rsa à ajouter à sez authorozed_keys, une adresse IP fixe et un nom d'hôte.
 
-Faire un fichier par noeud (kube01, kube02 et kube03)
-Sur chacun des noeuds:
-    Démarrer le serveur en utilisant le CD/DVD ou la clé USB
-    Télécharger le ficher d'initilisation du serveur en utiliant scp. Ex:
-        scp utilisateurprincipal@serveur.provisioning:kubeXX-ignition.json .
-    Lancer l'intialisation du serveur
-        sudo flatcar-install -d /dev/sda -i kubeXX-ignition.json
-    Enlver le CD/DVD ou la clé USB et redémarrer le serveur.
-    Le redémarrer une seconde fois s'il n'a pas la bonne adresse IP.
+La structure est la suivante pour nos 4 machines:
 
-# Création des noeuds
-Les étapes suivantes doivent être exécuté à partir du serveur Ansible principal.
+    kube01.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=eth0
 
-Se connecter sur le serveur contrôleur Ansible en tant que l'utilisateur dont la clé RSA pour SSH a été ajouté dans le authorized_keys des usagers root des serveurs CoreOS.
+            [ipv4]
+            method=manual
+            addresses=192.168.1.21/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube01
+    kube02.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=eth0
 
-Faire le checkout du projet et des sous-projets dans un rpertoire de travail:
+            [ipv4]
+            method=manual
+            addresses=192.168.1.22/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube02
+    kube03.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=eth0
 
-    git clone --recursive https://github.com/elfelip/kube-lacave.git
+            [ipv4]
+            method=manual
+            addresses=192.168.1.23/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube03
+    kube04.fcc
+    -------------------
+    variant: fcos
+    version: 1.1.0
+    passwd: 
+    users:
+    - name: root
+        ssh_authorized_keys:
+        - ssh-rsa 
+        LACLERSAPUBLIQUE
+    storage:
+    files:
+        - path: /etc/NetworkManager/system-connections/enp3s0.nmconnection
+        mode: 0600
+        overwrite: true
+        contents:
+            inline: |
+            [connection]
+            type=ethernet
+            interface-name=enp3s0
 
-Dans ce projet on utilise 3 noeuds:
-    kube01: premier master
-    kube02: noeud d'exécution d'application
-    kube03: deuxième master
+            [ipv4]
+            method=manual
+            addresses=192.168.1.24/24
+            gateway=192.168.1.1
+            dns=192.168.1.10
+            dns-search=lacave
+        - path: /etc/hostname
+        mode: 420
+        contents:
+            inline: kube01
+
+
+Pour créer le fichier ignition en format JSON utilisable par le processus d'installation, lancer les commandes suivantes:
+
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube01.fcc > kube01.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube02.fcc > kube02.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube03.fcc > kube03.ign
+    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube04.fcc > kube04.ign
+
+Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans mopn cas, je les ai mis sur mon serveur elrond qui est en Ubuntu et qui a Apache installé dessus, dans le répertoire /var/www/html/kubernetes
+
+## Installation de Fedora CoreOS
+J'ai utilisé un DVD fait à partir de l'ISO disponible sur le site de Fedora.
+
+Pour que ca fonctionne avec Crio et Fedora CoreOS, on doit faire manuellement le correctif suivant à Kubespray.
+https://github.com/kubernetes/kubeadm/issues/1495
+
+La modification a été poussée dans mon repository de Kubespray:
+    https://github.com/elfelip/kubespray.git
+
+### kube01
+Démarrer à partir du CD.
+
+S'il y a un système d'exploitation sur le disque de destination, il peut être nécessaire de le remettre à 0 en utilisant les commandes suivantes:
+    DISK="/dev/sda"
+    # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
+    # You will have to run this step for all disks.
+    sudo sgdisk --zap-all $DISK
+    # Clean hdds with dd
+    sudo dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
+Redémarrer ensuite le système
+    sudo init 6
+On peut ensuite installer l'OS avec la commande suivante:
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube01.ign --insecure-ignition
+L'option --insecure-ignition est nécessaire si le serveur Web n'est pas en https.
+
+Répéter sur les autres noeuds en utilisant les fichier kube0X.ign respectifs:
+
+### kube02
+
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube02.ign --insecure-ignition
+
+### kube03
+
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube03.ign --insecure-ignition
+
+### kube04
+
+    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube04.ign --insecure-ignition
 
 ## Ajout du certifact de du root CA dans les trust stores des noeuds
 Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire les opérations suivantes sur tous les noeuds:
 
-    scp resources/cert/lacave-root.pem root@kube01:/etc/ssl/certs
-    ssh root@kube01 update-ca-certificates
-    scp resources/cert/lacave-root.pem root@kube02:/etc/ssl/certs
-    ssh root@kube02 update-ca-certificates
-    scp resources/cert/lacave-root.pem root@kube03:/etc/ssl/certs
-    ssh root@kube03 update-ca-certificates
+    scp resources/cert/lacave-root.pem root@kube01:/etc/pki/ca-trust/source/anchors
+    ssh root@kube01 update-ca-trust
+    scp resources/cert/lacave-root.pem root@kube02:/etc/pki/ca-trust/source/anchors
+    ssh root@kube02 update-ca-trust
+    scp resources/cert/lacave-root.pem root@kube03:/etc/pki/ca-trust/source/anchors
+    ssh root@kube03 update-ca-trust
+    scp resources/cert/lacave-root.pem root@kube04:/etc/pki/ca-trust/source/anchors
+    ssh root@kube04 update-ca-trust
 
 Actuellement, l'authentification OpenID Connect est ajouté dans la configuration du cluster.
 Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave-root.pem dans les répertopires /etc/kubernetes/ssl de chacun des noeuds du cluster.
@@ -122,6 +244,9 @@ Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave
     scp resources/cert/lacave-root.pem root@kube02:/etc/kubernetes/ssl
     ssh root@kube03 mkdir -p /etc/kubernetes/ssl
     scp resources/cert/lacave-root.pem root@kube03:/etc/kubernetes/ssl
+    ssh root@kube04 mkdir -p /etc/kubernetes/ssl
+    scp resources/cert/lacave-root.pem root@kube04:/etc/kubernetes/ssl    
+
 
 # Préparation de l'inventaire Ansible de Kubespray
 
@@ -326,21 +451,9 @@ Pour obtenir le jeton d'authentification, lancer les commandes suivantes à part
     kubernetes-dashboard-key-holder    Opaque                                2      74s
     kubernetes-dashboard-token-mlpmn   kubernetes.io/service-account-token   3      74s
 
-    kubectl describe secret -n kube-system admin-user-token-f85z5
-    Name:         admin-user-token-f85z5
-    Namespace:    kubernetes-dashboard
-    Labels:       <none>
-    Annotations:  kubernetes.io/service-account.name: admin-user
-                kubernetes.io/service-account.uid: ab8b5470-6884-406d-ab30-20dd0967ab7e
-
-    Type:  kubernetes.io/service-account-token
-
-    Data
-    ====
-    ca.crt:     1025 bytes
-    namespace:  20 bytes
-    token:      eyJhbG...
-
+    TOKEN=$(kubectl get secret admin-user-token-ntxgf -n kube-system -o jsonpath='{.data.token}')
+    echo $TOKEN
+    ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNklrUlhTREJqU....
 
 On peut accéder à la console par l'adresse suivante:
     Par un port-forward:
@@ -1605,203 +1718,77 @@ Calico (réseau):
     Obtenir les noeuds Calico
     calicoctl get nodes -o yaml
  
- 
+# Flatcar Linux
+J'utilise le CD d'installation de Flatcar pour provisionner manuellement les noeuds.
+La première étape est de graver sur un CD/DVD ou une clé USB l'ISO de Flatcat https://docs.flatcar-linux.org/os/booting-with-iso/
 
-# Fedora CoreOS
-Voici les instructions pour utiliser Fedora CoreOS au lieu de Flatcar Linux
+La deuxième étape est de créer les fichiers d'intialisation pour les 4 noeuds. On créé ces fichiers sur le serveur de provisionning.
+Voici la strcture du fichier. 
+    kubeXX-ignition.json
+    {
+    "ignition": {
+        "version": "2.2.0"
+    },
+    "passwd": {
+        "users": [
+        {
+            "name": "root",
+            "sshAuthorizedKeys": [
+            "Copier Le contenue du fichier .ssh/id_rsa.pub de l'utilisateur principal du serveur de provisioning"
+            ]
+        }
+        ]
+    },
+    "networkd": {
+        "units": [
+        {
+            "contents": "[Match]\nName=eno1\n\n[Network]\nAddress=192.168.1.XX/24\nGateway=192.168.1.1\nDNS=192.168.1.10",
+            "name": "00-eno1.network"
+        }
+        ]
+    },
+    "storage": {
+        "files": [{
+        "filesystem": "root",
+        "path": "/etc/hostname",
+        "mode": 420,
+        "contents": { "source": "data:,kubeXX" }
+        }]
+    }
 
-## Fichier ignition
-Pour la configurtation des serveurs, on créé un fichier Yaml.
+Faire un fichier par noeud (kube01, kube02 et kube03)
+Sur chacun des noeuds:
+    Démarrer le serveur en utilisant le CD/DVD ou la clé USB
+    Télécharger le ficher d'initilisation du serveur en utiliant scp. Ex:
+        scp utilisateurprincipal@serveur.provisioning:kubeXX-ignition.json .
+    Lancer l'intialisation du serveur
+        sudo flatcar-install -d /dev/sda -i kubeXX-ignition.json
+    Enlver le CD/DVD ou la clé USB et redémarrer le serveur.
+    Le redémarrer une seconde fois s'il n'a pas la bonne adresse IP.
 
-Pour nos besoins, le fichier contient le user root avec la clé rsa à ajouter à sez authorozed_keys, une adresse IP fixe et un nom d'hôte.
+# Création des noeuds
+Les étapes suivantes doivent être exécuté à partir du serveur Ansible principal.
 
-La structure est la suivante pour nos 4 machines:
+Se connecter sur le serveur contrôleur Ansible en tant que l'utilisateur dont la clé RSA pour SSH a été ajouté dans le authorized_keys des usagers root des serveurs CoreOS.
 
-    kube01.fcc
-    -------------------
-    variant: fcos
-    version: 1.1.0
-    passwd: 
-    users:
-    - name: root
-        ssh_authorized_keys:
-        - ssh-rsa 
-        LACLERSAPUBLIQUE
-    storage:
-    files:
-        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
-        mode: 0600
-        overwrite: true
-        contents:
-            inline: |
-            [connection]
-            type=ethernet
-            interface-name=eth0
+Faire le checkout du projet et des sous-projets dans un rpertoire de travail:
 
-            [ipv4]
-            method=manual
-            addresses=192.168.1.21/24
-            gateway=192.168.1.1
-            dns=192.168.1.10
-            dns-search=lacave
-        - path: /etc/hostname
-        mode: 420
-        contents:
-            inline: kube01
-    kube02.fcc
-    -------------------
-    variant: fcos
-    version: 1.1.0
-    passwd: 
-    users:
-    - name: root
-        ssh_authorized_keys:
-        - ssh-rsa 
-        LACLERSAPUBLIQUE
-    storage:
-    files:
-        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
-        mode: 0600
-        overwrite: true
-        contents:
-            inline: |
-            [connection]
-            type=ethernet
-            interface-name=eth0
+    git clone --recursive https://github.com/elfelip/kube-lacave.git
 
-            [ipv4]
-            method=manual
-            addresses=192.168.1.22/24
-            gateway=192.168.1.1
-            dns=192.168.1.10
-            dns-search=lacave
-        - path: /etc/hostname
-        mode: 420
-        contents:
-            inline: kube02
-    kube03.fcc
-    -------------------
-    variant: fcos
-    version: 1.1.0
-    passwd: 
-    users:
-    - name: root
-        ssh_authorized_keys:
-        - ssh-rsa 
-        LACLERSAPUBLIQUE
-    storage:
-    files:
-        - path: /etc/NetworkManager/system-connections/eth0.nmconnection
-        mode: 0600
-        overwrite: true
-        contents:
-            inline: |
-            [connection]
-            type=ethernet
-            interface-name=eth0
-
-            [ipv4]
-            method=manual
-            addresses=192.168.1.23/24
-            gateway=192.168.1.1
-            dns=192.168.1.10
-            dns-search=lacave
-        - path: /etc/hostname
-        mode: 420
-        contents:
-            inline: kube03
-    kube04.fcc
-    -------------------
-    variant: fcos
-    version: 1.1.0
-    passwd: 
-    users:
-    - name: root
-        ssh_authorized_keys:
-        - ssh-rsa 
-        LACLERSAPUBLIQUE
-    storage:
-    files:
-        - path: /etc/NetworkManager/system-connections/enp3s0.nmconnection
-        mode: 0600
-        overwrite: true
-        contents:
-            inline: |
-            [connection]
-            type=ethernet
-            interface-name=enp3s0
-
-            [ipv4]
-            method=manual
-            addresses=192.168.1.24/24
-            gateway=192.168.1.1
-            dns=192.168.1.10
-            dns-search=lacave
-        - path: /etc/hostname
-        mode: 420
-        contents:
-            inline: kube01
-
-
-Pour créer le fichier ignition en format JSON utilisable par le processus d'installation, lancer les commandes suivantes:
-
-    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube01.fcc > kube01.ign
-    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube02.fcc > kube02.ign
-    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube03.fcc > kube03.ign
-    docker run -i --rm quay.io/coreos/fcct:release --pretty --strict < kube04.fcc > kube04.ign
-
-Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans mopn cas, je les ai mis sur mon serveur elrond qui est en Ubuntu et qui a Apache installé dessus, dans le répertoire /var/www/html/kubernetes
-
-## Installation de Fedora CoreOS
-J'ai utilisé un DVD fait à partir de l'ISO disponible sur le site de Fedora.
-
-Pour que ca fonctionne avec Crio et Fedora CoreOS, on doit faire manuellement le correctif suivant à Kubespray.
-https://github.com/kubernetes/kubeadm/issues/1495
-
-La modification a été poussée dans mon repository de Kubespray:
-    https://github.com/elfelip/kubespray.git
-
-### kube01
-Démarrer à partir du CD.
-
-S'il y a un système d'exploitation sur le disque de destination, il peut être nécessaire de le remettre à 0 en utilisant les commandes suivantes:
-    DISK="/dev/sda"
-    # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
-    # You will have to run this step for all disks.
-    sudo sgdisk --zap-all $DISK
-    # Clean hdds with dd
-    sudo dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
-Redémarrer ensuite le système
-    sudo init 6
-On peut ensuite installer l'OS avec la commande suivante:
-    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube01.ign --insecure-ignition
-L'option --insecure-ignition est nécessaire sir le serveur Web n'est pas en https.
-
-Répéter sur les autres noeuds en utilisant les fichier kube0X.ign respectifs:
-
-### kube02
-
-    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube02.ign --insecure-ignition
-
-### kube03
-
-    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube03.ign --insecure-ignition
-
-### kube04
-
-    sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube04.ign --insecure-ignition
+Dans ce projet on utilise 3 noeuds:
+    kube01: premier master
+    kube02: noeud d'exécution d'application
+    kube03: deuxième master
 
 ## Ajout du certifact de du root CA dans les trust stores des noeuds
 Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire les opérations suivantes sur tous les noeuds:
 
-    scp resources/cert/lacave-root.pem root@kube01:/etc/pki/ca-trust/source/anchors
-    ssh root@kube01 update-ca-trust
-    scp resources/cert/lacave-root.pem root@kube02:/etc/pki/ca-trust/source/anchors
-    ssh root@kube02 update-ca-trust
-    scp resources/cert/lacave-root.pem root@kube03:/etc/pki/ca-trust/source/anchors
-    ssh root@kube03 update-ca-trust
-    scp resources/cert/lacave-root.pem root@kube04:/etc/pki/ca-trust/source/anchors
-    ssh root@kube04 update-ca-trust
+    scp resources/cert/lacave-root.pem root@kube01:/etc/ssl/certs
+    ssh root@kube01 update-ca-certificates
+    scp resources/cert/lacave-root.pem root@kube02:/etc/ssl/certs
+    ssh root@kube02 update-ca-certificates
+    scp resources/cert/lacave-root.pem root@kube03:/etc/ssl/certs
+    ssh root@kube03 update-ca-certificates
 
 Actuellement, l'authentification OpenID Connect est ajouté dans la configuration du cluster.
 Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave-root.pem dans les répertopires /etc/kubernetes/ssl de chacun des noeuds du cluster.
@@ -1812,5 +1799,3 @@ Pour que le déploiement puisse fonctionner, on doit copier le certificat lacave
     scp resources/cert/lacave-root.pem root@kube02:/etc/kubernetes/ssl
     ssh root@kube03 mkdir -p /etc/kubernetes/ssl
     scp resources/cert/lacave-root.pem root@kube03:/etc/kubernetes/ssl
-    ssh root@kube04 mkdir -p /etc/kubernetes/ssl
-    scp resources/cert/lacave-root.pem root@kube04:/etc/kubernetes/ssl    

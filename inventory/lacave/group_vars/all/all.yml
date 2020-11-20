@@ -3,7 +3,7 @@
 #ansible_become: root
 ansible_user: root
 #ansible_become_user: root
-ansible_python_interpreter: /opt/bin/python
+ansible_python_interpreter: /usr/bin/python
 
 ## Directory where etcd data stored
 etcd_data_dir: /var/lib/etcd
@@ -12,7 +12,7 @@ etcd_data_dir: /var/lib/etcd
 etcd_kubeadm_enabled: false
 
 ## Directory where the binaries will be installed
-bin_dir: /usr/bin
+bin_dir: /usr/local/bin
 
 ## The access_ip variable is used to define how other nodes should access
 ## the node.  This is used in flannel to allow other flannel nodes to see

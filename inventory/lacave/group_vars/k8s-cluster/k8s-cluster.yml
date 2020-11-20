@@ -119,7 +119,8 @@ kube_apiserver_insecure_port: 0  # (disabled)
 
 # Kube-proxy proxyMode configuration.
 # Can be ipvs, iptables
-kube_proxy_mode: ipvs
+#kube_proxy_mode: ipvs
+kube_proxy_mode: iptables
 
 # configure arp_ignore and arp_announce to avoid answering ARP queries from kube-ipvs0 interface
 # must be set to true for MetalLB to work
@@ -191,8 +192,8 @@ dns_domain: "{{ cluster_name }}"
 
 ## Container runtime
 ## docker for docker, crio for cri-o and containerd for containerd.
-container_manager: docker
-#container_manager: crio
+#container_manager: docker
+container_manager: crio
 # Additional container runtimes
 kata_containers_enabled: false
 
