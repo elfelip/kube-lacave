@@ -24,4 +24,4 @@
   - name: Creer l'utilisateur admin pour le tableau de bord Kubernetes
     k8s:
       state: present
-      src: resources/dashboard-adminuser.yml      
+      src: "{{ lookup('file','resources/dashboard-adminuser.yml') }}"    
