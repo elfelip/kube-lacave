@@ -25,6 +25,10 @@
     k8s:
       state: present
       definition: "{{ lookup('file','resources/dashboard-adminuser.yml') }}"    
+  - name: Créer le namespace pour cert-manager
+    k8s:
+      kind: namespace
+      name: cert-manager
   - name: Installer cert-manager
     k8s:
       state: present
