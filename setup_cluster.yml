@@ -59,4 +59,4 @@
   - name: Installer l'ingress pour le dashboard rook-ceph
     k8s:                                                                                                                                                                                                             
       state: present
-      definition: "{{ lookup('template','esources/rook/dashboard-ingress-https.yaml.j2') }}"
+      definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
