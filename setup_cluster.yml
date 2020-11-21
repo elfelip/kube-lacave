@@ -49,6 +49,10 @@
     k8s:                                                                                                                                                                                                             
       state: present
       definition: "{{ lookup('file','resources/rook/operator.yaml') }}"
+    register: ceph_operator_install
+  - name: Installation l'opérateur
+    debug:
+      var: ceph_operator_install 
   - name: Attendre 1 minutes que l'opérateur soit démarré
     pause:
       minutes: 1
