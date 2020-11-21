@@ -41,3 +41,18 @@
       namespace: cert-manager                                                                                                                                                                                        
     with_items: '{{ lookup("file", "resources/cert/root-ca-cert-manager.yml", split_lines=False) | from_yaml_all | list }}'                                              
     when: item is not none
+  - name: Installer les CRD pour rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('file','resources/rook/common.yaml') }}"    
+  - name: Installer l'opérateur rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('file','resources/rook/operator.yaml') }}"
+  - name: Attendre 1 minutes que l'opérateur soit démarré
+    pause:
+      minutes: 1
+  - name: Installer le cluster rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('file','resources/rook/cluster.yaml') }}"
