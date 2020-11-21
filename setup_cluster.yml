@@ -50,16 +50,19 @@
       state: present
       definition: "{{ lookup('file','resources/rook/operator.yaml') }}"
     register: ceph_operator_install
-  - name: Installation l'opérateur
-    debug:
-      var: ceph_operator_install 
-  - name: Attendre 1 minutes que l'opérateur soit démarré
+  - name: Attendre 5 minutes que l'opérateur soit démarré
     pause:
-      minutes: 1
+      minutes: 5
+    when: ceph_operator_install is defined and ceph_operator_install.changed is defined and ceph_operator_install.changed
   - name: Installer le cluster rook-ceph
     k8s:                                                                                                                                                                                                             
       state: present
       definition: "{{ lookup('file','resources/rook/cluster.yaml') }}"
+    register: ceph_cluster_install
+  - name: Attendre 15 minutes que le cluster soit démarré
+    pause:
+      minutes: 15
+    when: ceph_cluster_install is defined and ceph_cluster_install.changed is defined and ceph_cluster_install.changed
   - name: Installer l'ingress pour le dashboard rook-ceph
     k8s:                                                                                                                                                                                                             
       state: present
