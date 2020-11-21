@@ -28,4 +28,4 @@
   - name: Installer cert-manager
     k8s:
       state: present
-      definition: "{{ cert_manager_manifest_url }}"
+      definition: "{{ lookup('url',cert_manager_manifest_url) }}"
