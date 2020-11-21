@@ -1,7 +1,7 @@
 - hosts: management
   vars:
     helm_install_url: https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
-
+    cert_manager_manifest_url: https://github.com/jetstack/cert-manager/releases/download/v1.0.4/cert-manager.yaml
   tasks:
   - name: Installer le module Kubernetes pour Python3
     apt:
@@ -25,3 +25,7 @@
     k8s:
       state: present
       definition: "{{ lookup('file','resources/dashboard-adminuser.yml') }}"    
+  - name: Installer cert-manager
+    k8s:
+      state: present
+      definition: "{{ cert_manager_manifest_url }}"
