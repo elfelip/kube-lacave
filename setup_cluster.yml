@@ -64,8 +64,13 @@
       minutes: 15
     when: ceph_cluster_install is defined and ceph_cluster_install.changed is defined and ceph_cluster_install.changed
   - name: Afficher le mot de passe admin du Dashboard ceph
-    command: "kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d"
-    register: rook_ceph_dashboard_password
+    shell: 
+      cmd: |
+        kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d
+    register: rook_ceph_dashboard_password_out
+  - name: Extraire le mot de passe
+    set_fact:
+      rook_ceph_dashboard_password: "{{ rook_ceph_dashboard_password_out.stdout }}"
   - name: Affichier le mot de passe Dashboard CEPH
     debug:
       var: rook_ceph_dashboard_password
