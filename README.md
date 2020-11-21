@@ -552,7 +552,7 @@ Les manifest pour créer l'opérateur sont dans le répertoire resources/rook.
         et un Ingress:
         kubectl apply -f resources/rook/dashboard-ingress-https.yaml
     7) Lancer la commande suivante pour obtenir le mot de passe de l'utilisateur admin de la console:
-        kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o json | jq -r .data.password | base64 -d
+        kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d
     8) Créer le pool CEPH.
         kubectl apply -f resources/rook/pool.yaml
     8) Créer le storage class.

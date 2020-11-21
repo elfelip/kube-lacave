@@ -78,3 +78,15 @@
     k8s:                                                                                                                                                                                                             
       state: present
       definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
+  - name: Créer le pool principal rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('file','resources/rook/pool.yaml') }}"
+  - name: Créer le storage class rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('file','resources/rook/storageclass.yaml') }}"
+  - name: Déployer le toolbox pour rook-ceph
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('file','resources/rook/toolbox.yaml') }}"
