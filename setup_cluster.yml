@@ -94,6 +94,11 @@
     k8s:                                                                                                                                                                                                             
       state: present
       definition: "{{ lookup('template','resources/nexus/nexus-manifest.yaml.j2') }}"
+    register: nexus_install
+  - name: Attendre 5 minutes que le cluster soit démarré
+    pause:
+      minutes: 5
+    when: nexus_install is defined and nexus_install.changed is defined and nexus_install.changed
   - name: Afficher le mot de passe admin du Dashboard ceph
     shell: 
       cmd: |
