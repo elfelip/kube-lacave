@@ -90,3 +90,7 @@
     k8s:                                                                                                                                                                                                             
       state: present
       definition: "{{ lookup('file','resources/rook/toolbox.yaml') }}"
+  - name: Déployer le dépôt Nexus
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('template','resources/nexus/nexus-manifest.yaml.j2') }}"
