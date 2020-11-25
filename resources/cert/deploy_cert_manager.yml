@@ -20,10 +20,10 @@
   when: decrypted_key is defined and decrypted_key.stdout is defined  
 - name: Obtenir le certificat root du CA auto signé et l'assembler au certificat intermédiaire
   set_fact:
-    self_signed_root_ca_cert_clear: "{{ lookup('file', self_signed_pki_path + '/ca/root-ca.crt') + lookup('file', self_signed_pki_path + '/ca/signing-ca.crt') }}"
-- name: Encoder les certificats
+    self_signed_root_ca_cert "{{ lookup('file', self_signed_pki_path + '/ca/root-ca.crt') | string | b64decode }}"
+- name: Obtenir le certificat intermédiaire du CA auto signé et l'assembler au certificat intermédiaire
   set_fact:
-    self_signed_root_ca_cert: "{{ self_signed_root_ca_cert_clear | string | b64encode }}"
+    self_signed_intemediate_ca_cert "{{ lookup('file', self_signed_pki_path + '/ca/signing-ca.crt') | string | b64decode }}"
 - name: Installer ClusterIssuer avec le certificat root self-signed
   k8s:
     definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'
