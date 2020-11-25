@@ -20,16 +20,16 @@
   when: decrypted_key is defined and decrypted_key.stdout is defined  
 - name: Obtenir le certificat root du CA auto signé et l'assembler au certificat intermédiaire
   set_fact:
-    self_signed_root_ca_cert "{{ lookup('file', self_signed_pki_path + '/ca/root-ca.crt') | string | b64decode }}"
+    self_signed_root_ca_cert: "{{ lookup('file', self_signed_pki_path + '/ca/root-ca.crt') | string | b64encode }}"
 - name: Obtenir le certificat intermédiaire du CA auto signé et l'assembler au certificat intermédiaire
   set_fact:
-    self_signed_intemediate_ca_cert "{{ lookup('file', self_signed_pki_path + '/ca/signing-ca.crt') | string | b64decode }}"
+    self_signed_intemediate_ca_cert: "{{ lookup('file', self_signed_pki_path + '/ca/signing-ca.crt') | string | b64encode }}"
 - name: Installer ClusterIssuer avec le certificat root self-signed
   k8s:
     definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'
     namespace: cert-manager
     state: present
-  when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined
+  when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined and self_signed_intemediate_ca_cert is defined
 - name: Installer le certificat root sur le serveur de Management Debian
   copy:
     src: "{{ self_signed_pki_path }}/ca/root-ca.crt"
