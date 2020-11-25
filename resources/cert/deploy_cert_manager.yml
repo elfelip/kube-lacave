@@ -21,10 +21,9 @@
 - name: Obtenir le certificat root du CA auto signé
   set_fact:
     self_signed_root_ca_cert: "{{ lookup('file', self_signed_pki_path + '/ca/root-ca.crt') | string | b64encode }}"
-  
 - name: Installer le certificat root self-signed
-  k8s:                                                                                                                                                                                                             
-    definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'                                                                                                                                                                                      
+  k8s:
+    definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'
     namespace: cert-manager
     state: present
-  when: pki_dir is defined
+  when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined
