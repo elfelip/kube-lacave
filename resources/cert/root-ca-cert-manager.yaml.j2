@@ -4,8 +4,7 @@ metadata:
   name: ca-lacave-tls
   namespace: cert-manager
 data:
-  ca.crt: {{ self_signed_root_ca_cert }}
-  tls.crt: {{ self_signed_intemediate_ca_cert }}
+  tls.crt: {{ self_signed_root_ca_cert }}
   tls.key: {{ self_signed_root_ca_key }}
 ---
 apiVersion: cert-manager.io/v1alpha2
