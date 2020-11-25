@@ -25,26 +25,8 @@
     k8s:
       state: present
       definition: "{{ lookup('file','resources/dashboard-adminuser.yml') }}"    
-  - name: Créer le namespace pour cert-manager
-    k8s:
-      kind: namespace
-      name: cert-manager
-  - name: Installer cert-manager
-    k8s:                                                                                                                                                                                                             
-      definition: '{{ item }}'                                                                                                                                                                                       
-      namespace: cert-manager                                                                                                                                                                                        
-    with_items: '{{ lookup("url", cert_manager_manifest_url, split_lines=False) | from_yaml_all | list }}'                                              
-    when: item is not none
-  - name: Installer le certificat root self-signed
-    k8s:                                                                                                                                                                                                             
-      definition: '{{ item }}'                                                                                                                                                                                       
-      namespace: cert-manager                                                                                                                                                                                        
-    with_items: '{{ lookup("file", "resources/cert/root-ca-cert-manager.yml", split_lines=False) | from_yaml_all | list }}'                                              
-    when: item is not none
-  - name: Installer les CRD pour rook-ceph
-    k8s:                                                                                                                                                                                                             
-      state: present
-      definition: "{{ lookup('file','resources/rook/common.yaml') }}"    
+  - name: Deployer Cert-Manager
+    include_tasks: resources/cert/deploy_cert_manager.yml
   - name: Installer l'opérateur rook-ceph
     k8s:                                                                                                                                                                                                             
       state: present

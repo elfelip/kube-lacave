@@ -1,0 +1,32 @@
+- hosts: management
+  tasks:
+  - name: Créer le namespace pour cert-manager
+    k8s:
+      kind: namespace
+      name: cert-manager
+  - name: Installer cert-manager
+    k8s:                                                                                                                                                                                                             
+      definition: '{{ item }}'                                                                                                                                                                                       
+      namespace: cert-manager                                                                                                                                                                                        
+    with_items: '{{ lookup("url", cert_manager_manifest_url, split_lines=False) | from_yaml_all | list }}'                                              
+    when: item is not none
+  - name: Decrypter la cle prive pour le root CA auto-signé
+    shell:
+      cmd: |
+        openssl rsa -in {{ self_signed_pki_path }}/ca/root-ca/private/root-ca.key -passin pass:{{ self_signed_pki_key_password }}
+    when: self_signed_pki_path is defined and self_signed_pki_key_password is defined
+    register: decrypted_key
+  - name: Convertir la clé privé en format base64
+    set_fact:
+      self_signed_root_ca_key: "{{ decrypted_key.stdout | b64encode }}"
+    when: decrypted_key is defined and decrypted_key.stdout is defined  
+  - name: Obtenir le certificat root du CA auto signé
+    set_fact:
+      self_signed_root_ca_cert: "{{ lookup('file', self_signed_pki_path + '/ca/root-ca.crt') | string | b64encode }}"
+    
+  - name: Installer le certificat root self-signed
+    k8s:                                                                                                                                                                                                             
+      definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'                                                                                                                                                                                      
+      namespace: cert-manager
+      state: present
+    when: pki_dir is defined
