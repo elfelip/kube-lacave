@@ -29,4 +29,6 @@
     method: PUT
     body: "{{ nexus_admin_password }}"
     force_basic_auth: yes
+    headers:
+      Content-type: text/plain
   when: nexus_password is defined
