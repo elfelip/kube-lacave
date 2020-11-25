@@ -99,17 +99,17 @@
     pause:
       minutes: 5
     when: nexus_install is defined and nexus_install.changed is defined and nexus_install.changed
-  - name: Afficher le mot de passe admin du Dashboard ceph
+  - name: Afficher le mot de passe admin du Nexus
     shell: 
       cmd: |
         kubectl exec --namespace=nexus -it $(kubectl get pod -l "app=nexus" --namespace=nexus -o jsonpath='{.items[0].metadata.name}') -- cat /nexus-data/admin.password
     register: nexus_password_out
-    when: nexus_install is defined and nexus_install.changed is defined and nexus_install.changed
+    ignore_errors: yes
   - name: Extraire le mot de passe
     set_fact:
       nexus_password: "{{ nexus_password_out.stdout }}"
-    when: nexus_install is defined and nexus_install.changed is defined and nexus_install.changed
+    when: nexus_password_out.rc == 0
   - name: Afficher le mot de passe admin Nexus
     debug:
       var: nexus_password
-    when: nexus_install is defined and nexus_install.changed is defined and nexus_install.changed
+    when: nexus_password is defined
