@@ -1,0 +1,32 @@
+- name: Déployer le dépôt Nexus
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('template','resources/nexus/nexus-manifest.yaml.j2') }}"
+  register: nexus_install
+- name: Attendre 5 minutes que le serveur Nexus soit démarré
+  pause:
+    minutes: 5
+  when: nexus_install is defined and nexus_install.changed is defined and nexus_install.changed
+- name: Afficher le mot de passe admin du Nexus
+  shell: 
+    cmd: |
+      kubectl exec --namespace=nexus -it $(kubectl get pod -l "app=nexus" --namespace=nexus -o jsonpath='{.items[0].metadata.name}') -- cat /nexus-data/admin.password
+  register: nexus_password_out
+  ignore_errors: yes
+- name: Extraire le mot de passe
+  set_fact:
+    nexus_password: "{{ nexus_password_out.stdout }}"
+  when: nexus_password_out.rc == 0
+- name: Afficher le mot de passe admin Nexus
+  debug:
+    var: nexus_password
+  when: nexus_password is defined
+- name: Changer le mot de passe du Nexus
+  uri:
+    url: https://nexus.{{ global_domain_name }}/service/rest/v1/security/users/admin/change-password
+    user: admin
+    password: "{{ nexus_password }}"
+    method: PUT
+    body: "{{ nexus_admin_password }}"
+    force_basic_auth: yes
+  when: nexus_password is defined

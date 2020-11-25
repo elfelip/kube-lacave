@@ -1,0 +1,45 @@
+- name: Installer l'opérateur rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('file','resources/rook/operator.yaml') }}"
+  register: ceph_operator_install
+- name: Attendre 5 minutes que l'opérateur soit démarré
+  pause:
+    minutes: 5
+  when: ceph_operator_install is defined and ceph_operator_install.changed is defined and ceph_operator_install.changed
+- name: Installer le cluster rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('file','resources/rook/cluster.yaml') }}"
+  register: ceph_cluster_install
+- name: Attendre 15 minutes que le cluster soit démarré
+  pause:
+    minutes: 15
+  when: ceph_cluster_install is defined and ceph_cluster_install.changed is defined and ceph_cluster_install.changed
+- name: Afficher le mot de passe admin du Dashboard ceph
+  shell: 
+    cmd: |
+      kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d
+  register: rook_ceph_dashboard_password_out
+- name: Extraire le mot de passe
+  set_fact:
+    rook_ceph_dashboard_password: "{{ rook_ceph_dashboard_password_out.stdout }}"
+- name: Afficher le mot de passe Dashboard CEPH
+  debug:
+    var: rook_ceph_dashboard_password
+- name: Installer l'ingress pour le dashboard rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
+- name: Créer le pool principal rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('file','resources/rook/pool.yaml') }}"
+- name: Créer le storage class rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('file','resources/rook/storageclass.yaml') }}"
+- name: Déployer le toolbox pour rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('file','resources/rook/toolbox.yaml') }}"
