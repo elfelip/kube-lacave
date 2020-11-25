@@ -31,4 +31,7 @@
     force_basic_auth: yes
     headers:
       Content-type: text/plain
+    status_code: 
+    - 204
+    - 200
   when: nexus_password is defined
