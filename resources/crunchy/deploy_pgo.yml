@@ -10,16 +10,13 @@
   with_items: '{{ lookup("url", pgo_manifest_url, split_lines=False) | from_yaml_all | list }}'                                              
   when: item is not none
   register: pgo_install_result
-- name: Debug
-  debug:
-    var: pgo_install_result
 - name: Attendre 5 minutes que l'opérateur soit démarré
   pause:
     minutes: 5
   when: pgo_install_result is defined and pgo_install_result.changed is defined and pgo_install_result.changed
 - name: Créer l'ingress pour l'opérateur
   k8s:
-    definition: "{{ lookup('file', 'resources/crunchy/pgo-ingress-manifest.yaml.j2') }}"
+    definition: "{{ lookup('template', 'resources/crunchy/pgo-ingress-manifest.yaml.j2') }}"
     state: present
 - name: Télécharger le script d'installation du client PGO
   get_url:
