@@ -16,10 +16,10 @@
 - name: Attendre 5 minutes que l'opérateur soit démarré
   pause:
     minutes: 5
-  when: pgo_namespace_result is defined and pgo_namespace_result.changed is defined and pgo_namespace_result.changed
+  when: pgo_install_result is defined and pgo_install_result.changed is defined and pgo_install_result.changed
 - name: Créer l'ingress pour l'opérateur
   k8s:
-    definition: "{{ lookup(file, resources/crunchy/pgo-ingress-manifest.yaml.j2"
+    definition: "{{ lookup('file', 'resources/crunchy/pgo-ingress-manifest.yaml.j2') }}"
     state: present
 - name: Télécharger le script d'installation du client PGO
   get_url:
