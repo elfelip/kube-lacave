@@ -32,10 +32,14 @@
   file:
     dest: /tmp/client-setup.sh
     state: absent
+- name: Copier le client pgo dans /usr/local/bin
+  copy:
+    src: "{{ ansible_env.HOME }}/.pgo/pgo"
+    dest: /usr/local/bin/pgo
+    remote_src: yes
 - name: Configurer les variables d'environnement pour le client PGO
   set_fact:
     pgo_client_env:
-      PATH: "{{ ansible_env.HOME }}/.pgo/pgo:{{ ansible_env.PATH }}"
       PGOUSER: "{{ ansible_env.HOME }}/.pgo/pgo/pgouser"
       PGO_CA_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
       PGO_CLIENT_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
