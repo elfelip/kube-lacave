@@ -1,0 +1,51 @@
+- name: Créer le namespace pour PGO
+  k8s:
+    kind: namespace
+    name: pgo
+  register: pgo_namespace_result
+- name: Installer l'opérateur
+  k8s:                                                                                                                                                                                                             
+    definition: '{{ item }}'                                                                                                                                                                                       
+    namespace: pgo
+  with_items: '{{ lookup("url", pgo_manifest_url, split_lines=False) | from_yaml_all | list }}'                                              
+  when: item is not none
+  register: pgo_install_result
+- name: Debug
+  debug:
+    var: pgo_install_result
+- name: Attendre 5 minutes que l'opérateur soit démarré
+  pause:
+    minutes: 5
+  when: pgo_namespace_result is defined and pgo_namespace_result.changed is defined and pgo_namespace_result.changed
+- name: Créer l'ingress pour l'opérateur
+  k8s:
+    definition: "{{ lookup(file, resources/crunchy/pgo-ingress-manifest.yaml.j2"
+    state: present
+- name: Télécharger le script d'installation du client PGO
+  get_url:
+    url: "{{ pgo_client_url }}"
+    dest: /tmp/client-setup.sh
+    mode: '0755'
+- name: Exécuter le script
+  command:
+    cmd: /tmp/client-setup.sh
+    creates: "{{ ansible_env.HOME }}/.pgo"
+  register: pgo_client_install_result
+- name: Configurer le profil de l'usager root pour PGO
+  lineinfile:
+    dest: "{{ ansible_env.HOME }}/.bashrc"
+    line: "{{ item }}"
+    insertafter: EOF
+    state: present
+  with_items:
+    - export PATH=${HOME}/.pgo/pgo:$PATH
+    - export PGOUSER=${HOME}/.pgo/pgo/pgouser
+    - export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt
+    - export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt
+    - export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key
+    - export PGO_APISERVER_URL=https://pgo.{{ kube_domain_name }}
+    - export PGO_NAMESPACE=pgo
+  
+
+
+

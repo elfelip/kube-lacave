@@ -1,0 +1,38 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: pgo-{{ project_name }}-tls
+  namespace: pgo
+spec:
+  secretName: registry-{{ project_name }}-tls
+  issuerRef:
+    name: ca-{{ project_name }}-issuer
+    kind: ClusterIssuer
+  commonName: registry.{{ kube_domain_name }}
+  organization:
+  - {{ project_name }} CA
+  dnsNames:
+  - pgo.{{ kube_domain_name }}
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  namespace: pgo
+  name: pgo-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: ca-{{ project_name }}-issuer
+spec:
+  tls:
+  - hosts:
+    - pgo.{{ kube_domain_name }}
+    secretName: pgo-{{ project_name }}-tls
+  rules:
+  - host: pgo.{{ kube_domain_name }}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: registry
+          servicePort: 5000

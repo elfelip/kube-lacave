@@ -2,6 +2,10 @@
   vars:
     helm_install_url: https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
     cert_manager_manifest_url: https://github.com/jetstack/cert-manager/releases/download/v1.1.0/cert-manager.yaml
+    pgo_version: v4.5.1
+    pgo_repository_base_url: https://raw.githubusercontent.com/CrunchyData/postgres-operator
+    pgo_client_url: "{{ pgo_repository_base_url }}/{{ pgo_version }}/installers/kubectl/client-setup.sh"
+    pgo_manifest_url: "{{ pgo_repository_base_url }}/{{ pgo_version }}/installers/kubectl/postgres-operator.yml"
   tasks:
   - name: Installer le module Kubernetes pour Python3
     apt:
@@ -35,3 +39,5 @@
     include_tasks: resources/rook/deploy_rook.yml
   - name: Deployer Nexus
     include_tasks: resources/nexus/deploy_nexus.yml
+  - name: Deployer L'opérateur Postgres
+    include_tasks: resources/crunchy/deploy_pgo.yml
