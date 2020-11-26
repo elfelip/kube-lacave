@@ -52,7 +52,7 @@
     line: "export {{ item.key }}={{ item.value }}"
     insertafter: EOF
     state: present
-  with_items: "{{ pgo_client_env }}"
+  with_items: "{{ pgo_client_env | dict2items }}"
 - name: Obtenir l'état de l'opérateur
   command:
     cmd: pgo version
