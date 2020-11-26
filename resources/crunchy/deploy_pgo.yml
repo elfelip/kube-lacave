@@ -32,26 +32,31 @@
   file:
     dest: /tmp/client-setup.sh
     state: absent
+- name: Configurer les variables d'environnement pour le client PGO
+  set_fact:
+    pgo_client_env:
+      PATH: "{{ ansible_env.HOME }}/.pgo/pgo:{{ ansible_env.PATH }}"
+      PGOUSER: "{{ ansible_env.HOME }}/.pgo/pgo/pgouser"
+      PGO_CA_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
+      PGO_CLIENT_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
+      PGO_CLIENT_KEY: "{{ ansible_env.HOME }}/.pgo/pgo/client.key"
+      PGO_APISERVER_URL: "https://pgo.{{ kube_domain_name }}"
+      PGO_NAMESPACE: pgo
 - name: Configurer le profil de l'usager root pour PGO
   lineinfile:
     dest: "{{ ansible_env.HOME }}/.bashrc"
-    line: "{{ item }}"
+    line: "export {{ item.key }}={{ item.value }}"
     insertafter: EOF
     state: present
-  with_items:
-    - export PATH=${HOME}/.pgo/pgo:$PATH
-    - export PGOUSER=${HOME}/.pgo/pgo/pgouser
-    - export PGO_CA_CERT=${HOME}/.pgo/pgo/client.crt
-    - export PGO_CLIENT_CERT=${HOME}/.pgo/pgo/client.crt
-    - export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key
-    - export PGO_APISERVER_URL=https://pgo.{{ kube_domain_name }}
-    - export PGO_NAMESPACE=pgo
-
+  with_items: "{{ pgo_client_env }}"
 - name: Obtenir l'état de l'opérateur
   command:
     cmd: pgo version
+  environement: "{{ pgo_client_env }}"
   register: pgo_status_version
-  
+- name: Debug
+  debug:
+    var: pgo_status_version
 
 
 
