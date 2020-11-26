@@ -37,6 +37,7 @@
     src: "{{ ansible_env.HOME }}/.pgo/pgo"
     dest: /usr/local/bin/pgo
     remote_src: yes
+    mode: '0755'
 - name: Configurer les variables d'environnement pour le client PGO
   set_fact:
     pgo_client_env:
