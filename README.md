@@ -16,6 +16,19 @@ La deuxième étape est d'installer Ansible: https://docs.ansible.com/ansible/la
     sudo apt-add-repository --yes --update ppa:ansible/ansible
     sudo apt install ansible
 
+Créer un fichier de mot de passe pour ansible vault
+    sudo bash -c 'uuidgen > /etc/ansible/passfile'
+
+Il sera alors possible d'utiliser ansible vault pour crypter des donnés dans l'inventaire.
+On peut créer le script /usr/local/bin/encrypt-ansible suivant :
+    #!/bin/bash
+    ansible-vault encrypt_string $2 --vault-id lacave@/etc/ansible/passfile --name $1
+Et le rendre exécutable:
+    sudo chmod a+x /usr/local/bin/encrypt-ansible
+
+Finalement on peut crypter des variables de l'inventaire. Ex.
+    encrypt-ansible nexus_admin_password LeMotDePasse
+
 ## Installer le dépôt du projet
 
 On doit ensuite faire un clone du projet avec la commande git:
@@ -49,7 +62,8 @@ Le fichier de zone pour lacave est /etc/bind/lacave.info.db
 # Création du PKI
 Afin de faciliter le création de certificats self-signed, on se cré un petite infrastructure à clé publique sur le serveur de provisionning.
 Référence: https://pki-tutorial.readthedocs.io/en/latest/simple/index.html
-La chaine de confiance ainsi que les clés de ce PKI sont incluse dans le projet GIT.
+La chaine de confiance ainsi que les clés de ce PKI ne sont pas incluses dans le projet GIT.
+On peut le référencer lorsqu'on utilise le playbook Ansible de configuration du cluster.
 
 # Préparation des noeuds
 La première étape est d'installer un système d'exploitation sur les noeuds physiques ou virtuel.
@@ -282,6 +296,34 @@ On spécifie à Kubespray les noeuds à déployer dans le fichier principal de l
 
 Les configurations spécifiques à chaque noeuds sont dans les fichiers ru répertoire inventory/hosts_vars
 
+## Les variables globales du projet
+
+Les variables communes sont mises dans le fichier group_vars/all/all.yml
+On y met les configuration propores à l'installation Ansible du serveur de gestion. Ex.
+    ansible_user: root
+    ansible_python_interpreter: /usr/bin/python3
+
+Et on y met aussi les configurations spécifiques aux éléments qu'on veut déployer dans notre cluster. Ex.
+    project_name: lacave
+    global_domain_name: "{{ project_name }}.info"
+    kube_domain_name: "kube.{{ global_domain_name }}"
+    self_signed_pki_path: /home/felip/pki
+    self_signed_pki_key_password: !vault |
+            $ANSIBLE_VAULT;1.2;AES256;lacave
+            34373939393864666661386531613631363632636235393838623061373164333836316262323830
+            6663663164663137333332306433303833323562656565660a643533323062356536386463623138
+            64376261343032366462623831396362303264643563616333663737353635646163643332363262
+            6362313362333330310a333764383937343630353465306565326432303465626634666136616636
+            6535
+    nexus_admin_password: !vault |
+            $ANSIBLE_VAULT;1.2;AES256;lacave
+            39386135303762333863353231326461303831306237323235336666633538343539326230323538
+            6530616138306634636265356134353563346234386264660a343238623430366635303033353831
+            63356536333236386437623034353431613361613534666333323639616432613034613532396535
+            3937313837643265650a396562616361323863663830373063646434316362613237626135356338
+            6231
+Les variables contenant des mot de passes sont cryptés avec le script encrypt-ansible.
+
 ## Choix de la version de Kubernetes
 
 Pour spécifier la version de Kubernetes à déployer on modifi la variable suivante du fichier group_vars/k8s-cluster/k8s-cluster.yml
@@ -390,6 +432,14 @@ Assigner un rôle au noeud kube02:
     kubectl label node kube02 node-role.kubernetes.io/worker=worker
 
 Les informations de connexion au cluster sont automatiquement ajouté dans le répertoire inventaire/lacave/
+
+# Installation automatisée
+
+Ce projet contient le playbook Ansible setup_cluster.yml qui permet d'installer les composants supplémentaires sur le cluster.
+Il permet de faire automatiquement toutes les opérations manuelles décites en Annexe.
+Pour l'exécuter, lancer la commande suivante:
+
+    ansible-playbook --vault-id /etc/ansible/passfile -i inventory/lacave/inventory.ini setup_cluster.yml
 
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.

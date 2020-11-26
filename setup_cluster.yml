@@ -27,6 +27,10 @@
       definition: "{{ lookup('file','resources/dashboard-adminuser.yml') }}"    
   - name: Deployer Cert-Manager
     include_tasks: resources/cert/deploy_cert_manager.yml
+  - name: Déployer l'Ingress pour le registre Interne
+    k8s:                                                                                                                                                                                                             
+      state: present
+      definition: "{{ lookup('template','resources/ingress/registry-ingress-manifest.yaml.j2') }}"
   - name: Deployer Rook-CEPH
     include_tasks: resources/rook/deploy_rook.yml
   - name: Deployer Nexus
