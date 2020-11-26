@@ -31,6 +31,10 @@
     cmd: /tmp/client-setup.sh
     creates: "{{ ansible_env.HOME }}/.pgo"
   register: pgo_client_install_result
+- name: Supprimer le script
+  file:
+    dest: /tmp/client-setup.sh
+    state: absent
 - name: Configurer le profil de l'usager root pour PGO
   lineinfile:
     dest: "{{ ansible_env.HOME }}/.bashrc"
