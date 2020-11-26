@@ -5,11 +5,11 @@ metadata:
   name: pgo-{{ project_name }}-tls
   namespace: pgo
 spec:
-  secretName: registry-{{ project_name }}-tls
+  secretName: pgo-{{ project_name }}-tls
   issuerRef:
     name: ca-{{ project_name }}-issuer
     kind: ClusterIssuer
-  commonName: registry.{{ kube_domain_name }}
+  commonName: pgo.{{ kube_domain_name }}
   organization:
   - {{ project_name }} CA
   dnsNames:
