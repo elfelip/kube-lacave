@@ -56,7 +56,7 @@
 - name: Obtenir l'état de l'opérateur
   command:
     cmd: pgo version
-  environement: "{{ pgo_client_env }}"
+  environment: "{{ pgo_client_env }}"
   register: pgo_status_version
 - name: Debug
   debug:
