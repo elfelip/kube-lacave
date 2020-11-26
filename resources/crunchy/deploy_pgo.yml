@@ -46,6 +46,11 @@
     - export PGO_CLIENT_KEY=${HOME}/.pgo/pgo/client.key
     - export PGO_APISERVER_URL=https://pgo.{{ kube_domain_name }}
     - export PGO_NAMESPACE=pgo
+
+- name: Obtenir l'état de l'opérateur
+  command:
+    cmd: pgo version
+  register: pgo_status_version
   
 
 
