@@ -1,24 +1,23 @@
 ---
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   namespace: pgo
   name: pgo-ingress
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
 spec:
   tls:
-  - hosts:
-    - pgo.{{ kube_domain_name }}
-    secretName: pgo.tls
+  - secretName: pgo.tls
   rules:
   - host: pgo.{{ kube_domain_name }}
     http:
       paths:
       - path: /
+        pathType: Prefix
         backend:
-          serviceName: postgres-operator
-          servicePort: 8443
+          service:
+            name: postgres-operator
+            port:
+              number: 8443
