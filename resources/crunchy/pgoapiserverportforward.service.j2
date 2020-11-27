@@ -1,0 +1,14 @@
+[Unit]
+Description="Port Forward PGO API Server"
+After=multi-user.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=kubectl port-forward -n pgo svc/postgress-operator {{ pgo_apiserver_forward_to_port }}:8443
+Restart=on-abort
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

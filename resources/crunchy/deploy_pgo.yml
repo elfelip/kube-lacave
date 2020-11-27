@@ -14,10 +14,10 @@
   pause:
     minutes: 5
   when: pgo_install_result is defined and pgo_install_result.changed is defined and pgo_install_result.changed
-- name: Créer l'ingress pour l'opérateur
-  k8s:
-    definition: "{{ lookup('template', 'resources/crunchy/pgo-ingress-manifest.yaml.j2') }}"
-    state: present
+#- name: Créer l'ingress pour l'opérateur
+#  k8s:
+#    definition: "{{ lookup('template', 'resources/crunchy/pgo-ingress-manifest.yaml.j2') }}"
+#    state: present
 - name: Télécharger le script d'installation du client PGO
   get_url:
     url: "{{ pgo_client_url }}"
@@ -38,6 +38,19 @@
     dest: /usr/local/bin/pgo
     remote_src: yes
     mode: '0755'
+- name: Créer le fichier de service systemd
+  template:
+    src: resource/crunchy/pgoapiserverportforward.service.j2
+    dest: /etc/systemd/system/pgoapiserverportforward.service
+    owner: root
+    group: root
+    
+- name: Démarrer le service port forward pour PGO API Server
+  systemd:
+    name: pgoapiserverportforward
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
 - name: Configurer les variables d'environnement pour le client PGO
   set_fact:
     pgo_client_env:
@@ -45,7 +58,7 @@
       PGO_CA_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
       PGO_CLIENT_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
       PGO_CLIENT_KEY: "{{ ansible_env.HOME }}/.pgo/pgo/client.key"
-      PGO_APISERVER_URL: "https://pgo.{{ kube_domain_name }}"
+      PGO_APISERVER_URL: "https://localhost:{{ pgo_apiserver_forward_to_port }}"
       PGO_NAMESPACE: pgo
 - name: Configurer le profil de l'usager root pour PGO
   lineinfile:
