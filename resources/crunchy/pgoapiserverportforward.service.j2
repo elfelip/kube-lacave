@@ -6,7 +6,7 @@ After=multi-user.target
 User=root
 Group=root
 Type=simple
-ExecStart=kubectl port-forward -n pgo svc/postgress-operator {{ pgo_apiserver_forward_to_port }}:8443
+ExecStart=kubectl port-forward -n pgo svc/postgres-operator {{ pgo_apiserver_forward_to_port }}:8443
 Restart=on-abort
 KillSignal=SIGINT
 
