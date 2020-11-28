@@ -9,6 +9,7 @@
   when: keycloak_namespace_exist.rc == 1
 - name: Créer le namespace s'il n'existe pas
   command: pgo create namespace keycloak-system
+  environment: "{{ pgo_client_env }}"
   when: keycloak_namespace_exist.rc == 1
 - name: Arrêter le service port forward pour PGO API Server
   systemd:
