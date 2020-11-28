@@ -1,0 +1,16 @@
+- name: Voir si le namespace existe
+  command: kubectl get namespace keycloak-system
+  register: keycloak_namespace_exist
+  ignore_errors: yes
+- name: Démarrer le service port forward pour PGO API Server
+  systemd:
+    name: pgoapiserverportforward
+    state: started
+  when: keycloak_namespace_exist.rc == 1
+- name: Créer le namespace s'il n'existe pas
+  command: pgo create namespace keycloak-system
+  when: keycloak_namespace_exist.rc == 1
+- name: Arrêter le service port forward pour PGO API Server
+  systemd:
+    name: pgoapiserverportforward
+    state: stopped

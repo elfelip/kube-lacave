@@ -39,5 +39,7 @@
     include_tasks: resources/rook/deploy_rook.yml
   - name: Deployer Nexus
     include_tasks: resources/nexus/deploy_nexus.yml
-  - name: Deployer L'opérateur Postgres
+  - name: Deployer l'opérateur Postgres
     include_tasks: resources/crunchy/deploy_pgo.yml
+  - name: Deployer Keycloak
+    include_tasks: resources/keycloak/deploy_keycloak.yml
