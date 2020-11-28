@@ -1,0 +1,48 @@
+- hosts: client
+  vars:
+    pgo_version: v4.5.1
+    pgo_repository_base_url: https://raw.githubusercontent.com/CrunchyData/postgres-operator
+    pgo_client_url: "{{ pgo_repository_base_url }}/{{ pgo_version }}/installers/kubectl/client-setup.sh"
+  tasks:
+  - name: Télécharger le script d'installation du client PGO
+    get_url:
+      url: "{{ pgo_client_url }}"
+      dest: /tmp/client-setup.sh
+      mode: '0755'
+  - name: Exécuter le script
+    command:
+      cmd: /tmp/client-setup.sh
+      creates: "{{ ansible_env.HOME }}/.pgo"
+    register: pgo_client_install_result
+  - name: Supprimer le script
+    file:
+      dest: /tmp/client-setup.sh
+      state: absent
+  - name: Copier le client pgo dans ~/bin
+    copy:
+      src: "{{ ansible_env.HOME }}/.pgo/pgo/pgo"
+      dest: "{{ ansible_env.HOME }}/bin/pgo"
+      remote_src: yes
+      mode: '0755'
+  - name: Configurer les variables d'environnement pour le client PGO
+    set_fact:
+      pgo_client_env:
+        PGOUSER: "{{ ansible_env.HOME }}/.pgo/pgo/pgouser"
+        PGO_CA_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
+        PGO_CLIENT_CERT: "{{ ansible_env.HOME }}/.pgo/pgo/client.crt"
+        PGO_CLIENT_KEY: "{{ ansible_env.HOME }}/.pgo/pgo/client.key"
+        PGO_APISERVER_URL: "https://localhost:{{ pgo_apiserver_forward_to_port }}"
+        PGO_NAMESPACE: pgo
+  - name: Configurer le profil de l'usager pour PGO
+    lineinfile:
+      dest: "{{ ansible_env.HOME }}/.bashrc"
+      line: "export {{ item.key }}={{ item.value }}"
+      insertafter: EOF
+      state: present
+    with_items: "{{ pgo_client_env | dict2items }}"
+  - name: Afficher message
+    debug:
+      msg: "Lancer la commande suivante pour utiliser pgo: kubectl port-forward -n pgo svc/postgres-operator {{ pgo_apiserver_forward_to_port }}:8443"
+
+
+
