@@ -13,6 +13,7 @@
   when: keycloak_namespace_exist.rc == 1
 - name: Obtenir l'état du cluster
   command: pgo show cluster login{{ project_name }}cluster
+  environment: "{{ pgo_client_env }}"
   register: keycloak_db_cluster_status
 - name: Créer le cluster
   command:
