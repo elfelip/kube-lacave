@@ -28,6 +28,7 @@
         --replica-count {{ login_keycloak_db_replica_count | default ('2') }} \
         --replica-storage-config rook \
         --metrics
+  environment: "{{ pgo_client_env }}"
   when: keycloak_db_cluster_status.stdout == "No clusters found."
 - name: Arrêter le service port forward pour PGO API Server
   systemd:
