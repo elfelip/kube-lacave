@@ -1,0 +1,156 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: login-kube-{{ project_name }}-tls
+  namespace: keycloak-system
+spec:
+  secretName: login-kube-{{ project_name }}-tls
+  issuerRef:
+    name: ca-{{ project_name }}-issuer
+    kind: ClusterIssuer
+  commonName: login.kube.{{ project_name }}
+  organization:
+  - {{ project_name }} CA
+  dnsNames:
+  - login.kube.{{ project_name }}
+  - login.kube.{{ project_name }}.info
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: login-{{ project_name }}
+  namespace: keycloak-system
+  labels:
+    app: login-{{ project_name }}
+spec:
+  serviceName: login-{{ project_name }}
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+    #rollingUpdate:
+    #  maxSurge: 1
+    #  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: login-{{ project_name }}
+  template:
+    metadata:
+      labels:
+        app: login-{{ project_name }}
+    spec:
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: keycloak
+        image: docker.{{ project_name }}.info/{{ project_name }}/keycloak:11.0.3
+        imagePullPolicy: Always
+        env:
+        - name: KEYCLOAK_USER
+          value: admin
+        - name: KEYCLOAK_PASSWORD
+          value: admin
+        - name: PROXY_ADDRESS_FORWARDING
+          value: "true"
+        - name: DB_VENDOR
+          value: postgres
+        - name: KEYCLOAK_DB_DRIVER
+          value: postgresql
+        - name: DB_URL
+          value: "jdbc:postgresql://login{{ project_name }}cluster.kcdatabases:5432/keycloak"
+        - name: DB_ADDR
+          value: login{{ project_name }}cluster.kcdatabases
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_DATABASE
+          value: keycloak
+        - name: DB_SCHEMA
+          value: keycloak
+        - name: DB_USER
+          value: keycloak
+        - name: DB_USERNAME
+          value: keycloak
+        - name: DB_PASSWORD
+          value: keycloak
+        - name: KEYCLOAK_HA_CONFIG
+          value: standalone-ha-{{ project_name }}.xml
+        - name: JGROUPS_DISCOVERY_PROTOCOL
+          value: JDBC_PING
+        - name: JGROUPS_DISCOVERY_PROPERTIES
+          value: clear_table_on_view_change=true,register_shutdown_hook=true
+#        - name: JGROUPS_DISCOVERY_PROTOCOL
+#          value: dns.PING
+#        - name: JGROUPS_DISCOVERY_PROPERTIES
+#          value: "dns_query=login-{{ project_name }}-service"
+        - name: GRAYLOG_URL
+          value: {{ project_name }}-graylog-udp.graylog-system.svc
+        - name: GRAYLOG_PORT
+          value: "12231"
+        - name: GRAYLOG_HOST_BASE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+          failureThreshold: 1
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+          failureThreshold: 30
+          periodSeconds: 30
+      securityContext:
+        fsGroup: 0
+        runAsNonRoot: false
+        runAsUser: 0
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: keycloak-system
+  name: ingress-login-{{ project_name }}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: ca-{{ project_name }}-issuer
+spec:
+  tls:
+  - hosts:
+    - login.{{ kube_domain_name }}
+    secretName: login-kube-{{ project_name }}-tls
+  rules:
+  - host: login.{{ kube_domain_name }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: login-{{ project_name }}-service
+            port: 
+              number: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-{{ project_name }}-service
+  namespace: keycloak-system
+  labels:
+    app: login-{{ project_name }}
+spec:
+  ports:
+  - name: web
+    port: 8080
+    protocol: TCP
+  selector:
+    app: login-{{ project_name }}
