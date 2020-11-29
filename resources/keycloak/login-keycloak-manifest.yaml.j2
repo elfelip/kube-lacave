@@ -47,9 +47,9 @@ spec:
         imagePullPolicy: Always
         env:
         - name: KEYCLOAK_USER
-          value: admin
+          value: {{ login_keycloak_admin_username | default('admin') }}
         - name: KEYCLOAK_PASSWORD
-          value: admin
+          value: {{ login_keycloak_admin_password | default('admin') }}
         - name: PROXY_ADDRESS_FORWARDING
           value: "true"
         - name: DB_VENDOR
@@ -57,9 +57,9 @@ spec:
         - name: KEYCLOAK_DB_DRIVER
           value: postgresql
         - name: DB_URL
-          value: "jdbc:postgresql://login{{ project_name }}cluster.kcdatabases:5432/keycloak"
+          value: "jdbc:postgresql://login{{ project_name }}cluster:5432/keycloak"
         - name: DB_ADDR
-          value: login{{ project_name }}cluster.kcdatabases
+          value: login{{ project_name }}cluster
         - name: DB_PORT
           value: "5432"
         - name: DB_DATABASE
@@ -67,11 +67,11 @@ spec:
         - name: DB_SCHEMA
           value: keycloak
         - name: DB_USER
-          value: keycloak
+          value: {{ login_keycloak_db_username | default('keycloak') }}
         - name: DB_USERNAME
-          value: keycloak
+          value: {{ login_keycloak_db_username | default('keycloak') }}
         - name: DB_PASSWORD
-          value: keycloak
+          value: {{ login_keycloak_db_password | default('keycloak') }}
         - name: KEYCLOAK_HA_CONFIG
           value: standalone-ha-{{ project_name }}.xml
         - name: JGROUPS_DISCOVERY_PROTOCOL
