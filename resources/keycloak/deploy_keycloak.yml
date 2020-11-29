@@ -11,6 +11,24 @@
   command: pgo create namespace keycloak-system
   environment: "{{ pgo_client_env }}"
   when: keycloak_namespace_exist.rc == 1
+- name: Obtenir l'état du cluster
+  command: pgo show cluster login{{ project_name }}cluster
+  register: keycloak_db_cluster_status
+- name: Créer le cluster
+  command:
+    cmd: |
+      pgo create cluster login{{ project_name }}cluster \
+        --namespace keycloak-system \
+        --database keycloak \
+        --username {{ login_keycloak_db_username }} \
+        --password {{ login_keycloak_db_password }} \
+        --pvc-size {{ login_keycloak_db_pvc_size | default('10Gi') }} \
+        --storage-config rook \
+        --pgbackrest-storage-config rook \
+        --replica-count {{ login_keycloak_db_replica_count | default ('2') }} \
+        --replica-storage-config rook \
+        --metrics
+  when: keycloak_db_cluster_status.stdout == "No clusters found."
 - name: Arrêter le service port forward pour PGO API Server
   systemd:
     name: pgoapiserverportforward
