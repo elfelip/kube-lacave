@@ -6,7 +6,6 @@
   systemd:
     name: pgoapiserverportforward
     state: restarted
-  when: keycloak_namespace_exist.rc == 1
 - name: Créer le namespace s'il n'existe pas
   command: pgo create namespace keycloak-system
   environment: "{{ pgo_client_env }}"
