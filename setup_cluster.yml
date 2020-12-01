@@ -48,7 +48,7 @@
   - name: Deployer Rook-CEPH
     include_tasks: resources/rook/deploy_rook.yml
   - name: Deployer Monitoring
-    include_tasks: resrouces/monitoring/deploy_monitoring.yml
+    include_tasks: resources/monitoring/deploy_monitoring.yml
   - name: Deployer Nexus
     include_tasks: resources/nexus/deploy_nexus.yml
   - name: Deployer l'opérateur Postgres
