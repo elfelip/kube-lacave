@@ -11,7 +11,7 @@
   environment: "{{ pgo_client_env }}"
   when: keycloak_namespace_exist.rc == 1
 - name: Obtenir l'état du cluster
-  command: pgo show cluster login{{ project_name }}cluster
+  command: pgo show cluster login{{ project_name }}cluster --namespace keycloak-system
   environment: "{{ pgo_client_env }}"
   register: keycloak_db_cluster_status
 - name: Cluster Status
