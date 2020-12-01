@@ -1,0 +1,16 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: grafana-tls-certificate
+  namespace: monitoring
+spec:
+  secretName: grafana-tls
+  issuerRef:
+    name: ca-{{ project_name }}-issuer
+    kind: ClusterIssuer
+  commonName: grafana.{{ kube_domain_name }}
+  organization:
+  - {{ project_name }} CA
+  dnsNames:
+  - grafana.{{ kube_domain_name }}

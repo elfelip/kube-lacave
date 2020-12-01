@@ -25,6 +25,16 @@
     copy:
       src: inventory/lacave/artifacts/admin.conf
       dest: "{{ ansible_env.HOME }}/.kube/config"
+  - name: Installer Helm
+    snap:
+      classic: yes
+      name: helm
+      state: present
+  - name: Installer le référentiel stable de Helm
+    community.kubernetes.helm_repository:
+      name: stable
+      repo_url: "https://charts.helm.sh/stable"
+      state: present
   - name: Creer l'utilisateur admin pour le tableau de bord Kubernetes
     k8s:
       state: present
@@ -37,6 +47,8 @@
       definition: "{{ lookup('template','resources/ingress/registry-ingress-manifest.yaml.j2') }}"
   - name: Deployer Rook-CEPH
     include_tasks: resources/rook/deploy_rook.yml
+  - name: Deployer Monitoring
+    include_tasks: resrouces/monitoring/deploy_monitoring.yml
   - name: Deployer Nexus
     include_tasks: resources/nexus/deploy_nexus.yml
   - name: Deployer l'opérateur Postgres

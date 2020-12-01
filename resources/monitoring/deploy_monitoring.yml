@@ -1,0 +1,29 @@
+- name: Installer le référentiel Helm pour Prometheus
+  community.kubernetes.helm_repository:
+    name: prometheus-community
+    repo_url: "https://prometheus-community.github.io/helm-charts"
+    state: present
+- name: Créer le namespace pour le monitoring
+  k8s:
+    kind: namespace
+    name: monitoring
+    state: present
+- name: Créer les certificats
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/monitoring/certificats-manifest.yaml.j2') }}"
+- name: Installer le stack Prometheus avec la charte Helm
+  community.kubernetes.helm:
+    name: "{{ project_name }}-prom"
+    chart_ref: prometheus-community/kube-prometheus-stack
+    release_namespace: monitoring
+    values: "{{ lookup('template', 'resources/monitoring/stack-helm-values.yaml.j2') | from_yaml }}"
+  register: prometheus_stack_install_result
+- name: Attendre 5 minutes que le monitoring soit démarré
+  pause:
+    minutes: 5
+  when: prometheus_stack_install_result is defined and prometheus_stack_install_result.changed is defined and prometheus_stack_install_result.changed
+- name: Configurer le monitoring pour ingress nginx
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/monitoring/ingress-nginx-monitoring-manifest.yaml.j2') }}"

@@ -1,0 +1,204 @@
+## Override the deployment namespace
+##
+namespaceOverride: "monitoring"
+
+## Configuration for alertmanager
+## ref: https://prometheus.io/docs/alerting/alertmanager/
+##
+alertmanager:
+  alertmanagerSpec:
+    storage: 
+      volumeClaimTemplate:
+        spec:
+          storageClassName: rook-ceph-block
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: {{ alertmanager_storage_size | default('50Gi') }}
+#        selector: {}
+## Using default values from https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml
+##
+grafana:
+  enabled: true
+  namespaceOverride: "monitoring"
+  image:
+    repository: grafana/grafana
+    tag: {{ grafana_version | default('7.3.0') }}
+    sha: ""
+    pullPolicy: IfNotPresent
+  ## Deploy default dashboards.
+  ##
+  defaultDashboardsEnabled: true
+
+  adminPassword: {{ grafana_admin_password | default('prom-operator') }}
+  ## Enable persistence using Persistent Volume Claims
+  ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+  ##
+  persistence:
+    type: pvc
+    enabled: true
+    storageClassName: rook-ceph-block
+    accessModes:
+      - ReadWriteOnce
+    size: {{ grafana_storage_size | default('10Gi') }}
+    # annotations: {}
+    finalizers:
+      - kubernetes.io/pvc-protection
+    # subPath: ""
+    # existingClaim:
+  plugins: 
+  - grafana-piechart-panel
+
+  ingress:
+    ## If true, Grafana Ingress will be created
+    ##
+    enabled: true
+
+    ## Hostnames.
+    ## Must be provided if Ingress is enable.
+    ##
+    # hosts:
+    #   - grafana.domain.com
+    hosts:
+      - grafana.{{ kube_domain_name }}
+    ## TLS configuration for grafana Ingress
+    ## Secret must be manually created in the namespace
+    ##
+    tls: 
+    - secretName: grafana-tls
+      hosts:
+      - grafana.{{ kube_domain_name }}
+
+
+## Component scraping the kube api server
+##
+kubeApiServer:
+  enabled: true
+  tlsConfig:
+    serverName: kubernetes
+    insecureSkipVerify: false
+
+## Component scraping the kubelet and kubelet-hosted cAdvisor
+##
+kubelet:
+  enabled: true
+  namespace: kube-system
+
+## Component scraping the kube controller manager
+##
+kubeControllerManager:
+  enabled: true
+
+## Component scraping coreDns. Use either this or kubeDns
+##
+coreDns:
+  enabled: true
+## Component scraping etcd
+##
+kubeEtcd:
+  enabled: true
+
+## Component scraping kube scheduler
+##
+kubeScheduler:
+  enabled: true
+
+## Component scraping kube proxy
+##
+kubeProxy:
+  enabled: false
+## Component scraping kube state metrics
+##
+kubeStateMetrics:
+  enabled: true
+## Configuration for kube-state-metrics subchart
+##
+kube-state-metrics:
+  namespaceOverride: "monitoring"
+  rbac:
+    create: true
+  podSecurityPolicy:
+    enabled: true
+
+## Deploy node exporter as a daemonset to all nodes
+##
+nodeExporter:
+  enabled: true
+## Configuration for prometheus-node-exporter subchart
+##
+prometheus-node-exporter:
+  namespaceOverride: "monitoring"
+## Manages Prometheus and Alertmanager components
+##
+prometheusOperator:
+  enabled: true
+
+## Deploy a Prometheus instance
+##
+prometheus:
+
+  enabled: true
+
+  ingress:
+    enabled: false
+    ## Hostnames.
+    ## Must be provided if Ingress is enabled.
+    ##
+    # hosts:
+    #   - prometheus.domain.com
+    hosts: []
+
+    ## Paths to use for ingress rules - one path should match the prometheusSpec.routePrefix
+    ##
+    paths: []
+    # - /
+
+    ## TLS configuration for Prometheus Ingress
+    ## Secret must be manually created in the namespace
+    ##
+    tls: []
+      # - secretName: prometheus-general-tls
+      #   hosts:
+      #     - prometheus.example.com
+
+  ## Settings affecting prometheusSpec
+  ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#prometheusspec
+  ##
+  prometheusSpec:
+    ## Image of Prometheus.
+    ##
+    image:
+      repository: quay.io/prometheus/prometheus
+      tag: {{ prometheus_version | default('v2.22.0') }}
+      sha: ""
+
+    ## How long to retain metrics
+    ##
+    retention: {{ prometheus_retention_period | default('10d') }}
+
+    ## Maximum size of metrics
+    ##
+    retentionSize: {{ prometheus_retention_size | default('""') }}
+
+    ## Namespaces to be selected for ServiceMonitor discovery.
+    ## See https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#namespaceselector for usage
+    ##
+    #serviceMonitorNamespaceSelector: 
+    #  any: true
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector:
+      matchExpressions:
+      - key: "non-existent-label"
+        operator: "DoesNotExist"
+    ## Prometheus StorageSpec for persistent data
+    ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/user-guides/storage.md
+    ##
+    storageSpec: 
+      volumeClaimTemplate:
+        spec:
+          storageClassName: rook-ceph-block
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: {{ prometheus_storage_size | default('50Gi') }}
+#        selector: {}

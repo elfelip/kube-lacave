@@ -437,8 +437,10 @@ Les informations de connexion au cluster sont automatiquement ajouté dans le r�
 
 Ce projet contient le playbook Ansible setup_cluster.yml qui permet d'installer les composants supplémentaires sur le cluster.
 Il permet de faire automatiquement toutes les opérations manuelles décites en Annexe.
-Pour l'exécuter, lancer la commande suivante:
 
+Installer les rôles et collections pré-requises a l'exécution du playbook.
+    ansible-galaxy collection install -r requirements.yml
+Pour exécuter le playbook, lancer la commande suivante:
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/lacave/inventory.ini setup_cluster.yml
 
 # Configurer Ansible
