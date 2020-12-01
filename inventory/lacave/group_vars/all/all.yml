@@ -133,7 +133,7 @@ grafana_admin_password: !vault |
           3832
 prometheus_version: v2.22.0
 prometheus_retention_period: 10d
-prometheus_retention_size: 40Gi
+prometheus_retention_size: 40GiB
 prometheus_storage_size: 50Gi
 pgo_apiserver_forward_to_port: 18443
 login_keycloak_db_username: !vault |

@@ -14,6 +14,9 @@
   command: pgo show cluster login{{ project_name }}cluster
   environment: "{{ pgo_client_env }}"
   register: keycloak_db_cluster_status
+- name: Cluster Status
+  debug:
+    var: keycloak_db_cluster_status
 - name: Créer le cluster
   command:
     cmd: |
