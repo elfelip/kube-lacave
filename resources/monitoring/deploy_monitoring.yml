@@ -27,3 +27,7 @@
   k8s:
     state: present
     definition: "{{ lookup('template','resources/monitoring/ingress-nginx-monitoring-manifest.yaml.j2') }}"
+- name: Configurer le monitoring pour CEPH
+  k8s:
+    state: present
+    definition: "{{ lookup('file','resources/rook/mgr-service-monitor.yaml') }}"
