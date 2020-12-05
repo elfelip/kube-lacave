@@ -1,0 +1,34 @@
+- name: Installer l'opérateur ECK
+  k8s:                                                                                                                                                                                                             
+    definition: '{{ item }}'                                                                                                                                                                                       
+  with_items: '{{ lookup("url", eck_manifest_url, split_lines=False) | from_yaml_all | list }}'                                              
+  when: item is not none
+  register: eck_operator_install_result
+- name: Attendre que l'opérateur soit démarré
+  pause:
+    minutes: 2
+  when: eck_operator_install_result is defined and eck_operator_install_result.changed is defined and eck_operator_install_result.changed
+
+- name: Installer Elasticsearch avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/journalisation/elasticsearch/eck-elasticsearch-manifest.yaml.j2') }}"
+  register: eck_elastic_install_result
+- name: Attendre 2 minutes qu'Elasticsearch soit démarré
+  pause:
+    minutes: 2
+  when: eck_elastic_install_result is defined and eck_elastic_install_result.changed is defined and eck_elastic_install_result.changed
+- name: Obtenir le mot de passe de l'utilisateur elastic
+  shell: 
+    cmd: |
+      kubectl get secret {{ project_name }}-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d
+  register: eck_elastic_password_out
+- name: Extraire le mot de passe
+  set_fact:
+    eck_elastic_password: "{{ eck_elastic_password_out.stdout }}"
+
+- name: Installer Kibana avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/journalisation/kibana/eck-kibana-manifest.yaml.j2') }}"
+  register: eck_kibana_install_result

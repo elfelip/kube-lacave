@@ -1,10 +1,10 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: kube-lacave-elasticsearch
+  name: {{ project_name }}-elasticsearch
   namespace: elastic-system
 spec:
-  version: 7.9.3
+  version: {{ eck_elastic_version | default('7.9.3') }}
   nodeSets:
   - name: masters
     count: 1
@@ -14,14 +14,14 @@ spec:
         - name: elasticsearch
           env:
           - name: ES_JAVA_OPTS
-            value: -Xms2g -Xmx2g
+            value: {{ eck_elastic_es_java_opts | default('-Xms2g -Xmx2g') }}
           resources:
             requests:
-              memory: 4Gi
-              cpu: 0.5
+              memory: {{ eck_elastic_resources_requests_memory | default('4Gi') }}
+              cpu: {{ eck_elastic_resources_requests_cpu | default('0.5') }}
             limits:
-              memory: 4Gi
-              cpu: 2
+              memory: {{ eck_elastic_resources_limits_memory | default('4Gi') }}
+              cpu: {{ eck_elastic_resources_limits_cpu | default('2') }}
     config:
       node.master: true
       node.data: true
@@ -35,5 +35,5 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 10Gi
+            storage: {{ eck_elasticsearch_storage_size | default('10Gi') }}
         storageClassName: rook-ceph-block

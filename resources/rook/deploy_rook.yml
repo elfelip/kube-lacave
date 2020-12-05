@@ -16,7 +16,7 @@
   pause:
     minutes: 15
   when: ceph_cluster_install is defined and ceph_cluster_install.changed is defined and ceph_cluster_install.changed
-- name: Afficher le mot de passe admin du Dashboard ceph
+- name: Obtenir le mot de passe admin du Dashboard ceph
   shell: 
     cmd: |
       kubectl get secret -n rook-ceph rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d

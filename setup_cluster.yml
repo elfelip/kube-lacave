@@ -6,6 +6,7 @@
     pgo_repository_base_url: https://raw.githubusercontent.com/CrunchyData/postgres-operator
     pgo_client_url: "{{ pgo_repository_base_url }}/{{ pgo_version }}/installers/kubectl/client-setup.sh"
     pgo_manifest_url: "{{ pgo_repository_base_url }}/{{ pgo_version }}/installers/kubectl/postgres-operator.yml"
+    eck_manifest_url: "https://download.elastic.co/downloads/eck/{{ eck_version | default('1.2.1') }}/all-in-one.yaml"
   tasks:
   - name: Installer le module Kubernetes pour Python3
     apt:
@@ -51,6 +52,10 @@
     include_tasks: resources/monitoring/deploy_monitoring.yml
   - name: Deployer Nexus
     include_tasks: resources/nexus/deploy_nexus.yml
+  - name: Deployer ECK
+    include_tasks: resources/journalisation/deploy_eck.yml
+  - name: Deployer Graylog
+    include_tasks: resources/journalisation/deploy_graylog.yml
   - name: Deployer l'opérateur Postgres
     include_tasks: resources/crunchy/deploy_pgo.yml
   - name: Deployer Keycloak

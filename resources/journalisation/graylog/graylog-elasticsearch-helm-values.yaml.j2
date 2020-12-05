@@ -1,0 +1,11 @@
+appVersion: {{ graylog_elasticsearch_version | default('6.7.2') }}
+image:
+  tag: {{ graylog_elasticsearch_version | default('6.7.2') }}
+cluster:
+  name: {{ project_name }}-graylog-elasticsearch
+data.:
+  persistence:
+    enabled: true
+    sice: {{ graylog_elasticsearch_storage_size | default('30Gi') }}
+    storageClass: rook-ceph-block
+    accessMode: ReadWriteOnce

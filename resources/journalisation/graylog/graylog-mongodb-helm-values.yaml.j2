@@ -1,6 +1,8 @@
 global:
   storageClass: rook-ceph-block
   namespaceOverride: graylog-system
+image:
+  tag: {{ graylog_mongodb_version | default('4.4.2') }}
 
 clusterDomain: {{ kube_cluster_domain_name }}
 auth:

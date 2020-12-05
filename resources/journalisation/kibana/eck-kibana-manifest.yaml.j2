@@ -1,13 +1,13 @@
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: kube-lacave-kibana
+  name: {{ project_name }}-kibana
   namespace: elastic-system
 spec:
-  version: 7.9.3
+  version: {{ eck_kibana_version | default('7.9.3')) }}
   count: 1
   elasticsearchRef:
-    name: kube-lacave-elasticsearch
+    name: {{ project_name }}-elasticsearch
   http:
     tls:
       selfSignedCertificate:
@@ -16,37 +16,37 @@ spec:
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
-  name: kibana-kube-lacave-tls
+  name: kibana-{{ project_name }}-tls
   namespace: elastic-system
 spec:
-  secretName: kibana-kube-lacave-tls
+  secretName: kibana-{{ project_name }}-tls
   issuerRef:
-    name: ca-lacave-issuer
+    name: ca-{{ project_name }}-issuer
     kind: ClusterIssuer
-  commonName: kibana.kube.lacave.info
+  commonName: kibana.{{ kube_domain_name }}
   organization:
   - Lacave CA
   dnsNames:
-    - kibana.kube.lacave.info
+    - kibana.{{ kube_domain_name }}
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
-  name: kibana-kube-lacave-ingress
+  name: kibana-{{ project_name }}-ingress
   namespace: elastic-system
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: ca-lacave-issuer
+    cert-manager.io/cluster-issuer: ca-{{ project_name }}-issuer
 spec:
   tls:
   - hosts:
-    - kibana.kube.lacave.info
-    secretName: kibana-kube-lacave-tls
+    - kibana.{{ kube_domain_name }}
+    secretName: kibana-{{ project_name }}-tls
   rules:
-    - host: kibana.kube.lacave.info
+    - host: kibana.{{ kube_domain_name }}
       http:
         paths:
         - path: /
           backend:
-            serviceName: kube-lacave-kibana-kb-http
+            serviceName: {{ project_name }}-kibana-kb-http
             servicePort: 5601

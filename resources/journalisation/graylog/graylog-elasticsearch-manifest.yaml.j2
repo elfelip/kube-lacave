@@ -1,10 +1,10 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: graylog-elasticsearch
+  name: {{ project_name }}-graylog-elasticsearch
   namespace: graylog-system
 spec:
-  version: 6.8.6
+  version: {{ graylog_elasticsearch_version | default('7.9.3') }}
   http:
     tls:
       selfSignedCertificate:
@@ -30,5 +30,5 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 10Gi
+            storage: {{ graylog_elasticsearch_storage_size | default('50Gi') }}
         storageClassName: rook-ceph-block

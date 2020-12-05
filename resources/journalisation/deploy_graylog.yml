@@ -1,0 +1,50 @@
+- name: Installer le référentiel Helm Bitnami pour MongoDB
+  community.kubernetes.helm_repository:
+    name: bitnami
+    repo_url: "https://charts.bitnami.com/bitnami"
+    state: present
+- name: Créer le namespace pour la journalisation
+  k8s:
+    kind: namespace
+    name: graylog-system
+    state: present
+- name: Créer le certificat
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/journalisation/graylog/graylog-cert-manifest.yaml.j2') }}"
+- name: Installer MongoDB avec la charte Helm
+  community.kubernetes.helm:
+    name: "{{ project_name }}-graylog-mongodb"
+    chart_ref: bitnami/mongodb
+    release_namespace: graylog-system
+    values: "{{ lookup('template', 'resources/journalisation/graylog/graylog-mongodb-helm-values.yaml.j2') | from_yaml }}"
+  register: graylog_mongodb_install_result
+- name: Attendre 1 minutes que MongoDB soit démarré
+  pause:
+    minutes: 1
+  when: graylog_mongodb_install_result is defined and graylog_mongodb_install_result.changed is defined and graylog_mongodb_install_result.changed
+#- name: Installer Elasticsearch avec la charte Helm
+#  community.kubernetes.helm:
+#    name: "{{ project_name }}-graylog-elasticsearch"
+#    chart_ref: stable/elasticsearch
+#    release_namespace: graylog-system
+#    values: "{{ lookup('template', 'resources/journalisation/graylog/graylog-elasticsearch-helm-values.yaml.j2') | from_yaml }}"
+#  register: graylog_elastic_install_result
+- name: Installer Elasticsearch avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml.j2') }}"
+  register: graylog_elastic_install_result
+- name: Attendre 2 minutes qu'Elasticsearch soit démarré
+  pause:
+    minutes: 2
+  when: graylog_elastic_install_result is defined and graylog_elastic_install_result.changed is defined and graylog_elastic_install_result.changed
+- name: Obtenir le mot de passe admin de l'utilisateur elastic
+  shell: 
+    cmd: |
+      kubectl get secret {{ project_name }}-graylog-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n graylog-system | base64 -d
+  register: graylog_elastic_password_out
+- name: Extraire le mot de passe
+  set_fact:
+    graylog_elastic_password: "{{ graylog_elastic_password_out.stdout }}"
+

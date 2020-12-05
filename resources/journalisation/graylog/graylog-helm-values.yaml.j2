@@ -14,7 +14,7 @@ serviceAccount:
   # The name of the ServiceAccount to use.
   # If not set and create is true, a name is generated using the fullname template
   ##
-  name: lacave-graylog
+  name: {{ project_name }}-graylog
 
 tags:
   install-mongodb: false
@@ -22,7 +22,7 @@ tags:
 
 graylog:
   image:
-    repository: graylog/graylog:4.0.0-beta.3-1
+    repository: graylog/graylog:{{ graylog_version | default('4.0.0-beta.3-1') }}
   persistence:
     enabled: true
     storageClass: rook-ceph-block
@@ -48,8 +48,8 @@ graylog:
   rootUsername: "admin"
   rootTimezone: America/Toronto
   elasticsearch:
-    hosts: http://lacave-graylog-elasticsearch-client.graylog-system.svc:9200
-    #hosts: http://elastic:TxMrIY19J35d289TCQE0k78b@graylog-elasticsearch-es-http:9200
+    hosts: http://{{ project_name }}-graylog-elasticsearch-client.graylog-system.svc:9200
+    #hosts: http://elastic:{{ graylog_elastic_password }}@{{ project_name }}-graylog-elasticsearch:9200
     # Allow elasticsearch hosts to be fetched from a k8s secret
     # {{ graylog.fullname }}-es will be used as uriSecretName if left empty
     #uriSecretName: "graylog-elasticsearch-es-elastic-user"
