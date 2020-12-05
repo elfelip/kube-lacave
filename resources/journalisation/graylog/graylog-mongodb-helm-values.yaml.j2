@@ -1,0 +1,18 @@
+global:
+  storageClass: rook-ceph-block
+  namespaceOverride: graylog-system
+
+clusterDomain: {{ kube_cluster_domain_name }}
+auth:
+  enabled: true
+  rootPassword: {{ graylog_mongodb_root_password | default('ASDESERSaswaASDwqfasda') }}
+  database: graylog
+  username: {{ graylog_mongodb_db_username | default('graylog') }}
+  password: {{ graylog_mongodb_db_password | default('graylog') }}
+
+persistence:
+  storageClass: rook-ceph-block
+  accessMode: ReadWriteOnce
+  size: {{ graylog_mongodb_storage_size | default('10Gi') }}
+
+

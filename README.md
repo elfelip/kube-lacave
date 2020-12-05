@@ -6,39 +6,48 @@ On fait l'installation du cluster à partir d'un ordinateur externe. J'ai utilis
 On choisi un utilisateur de l'OS qui servira à faire les installation. Ca peut être un ustilisateur normal, l'utilisateur Jenkins si Jenkins est utilisé pour lancer les scripts de déploiement ou un utilisateur Ansible.
 
 On dit premièrement générer les clés RSA avec ssh:
-    ssh-keygen
 
+    ssh-keygen
     Ne pas entrer de passphrase
 
 La deuxième étape est d'installer Ansible: https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html
+
     sudo apt update
     sudo apt install software-properties-common
     sudo apt-add-repository --yes --update ppa:ansible/ansible
     sudo apt install ansible
 
 Créer un fichier de mot de passe pour ansible vault
+
     sudo bash -c 'uuidgen > /etc/ansible/passfile'
 
 Il sera alors possible d'utiliser ansible vault pour crypter des donnés dans l'inventaire.
 On peut créer le script /usr/local/bin/encrypt-ansible suivant :
+
     #!/bin/bash
     ansible-vault encrypt_string $2 --vault-id lacave@/etc/ansible/passfile --name $1
+
 Et le rendre exécutable:
+
     sudo chmod a+x /usr/local/bin/encrypt-ansible
 
 Finalement on peut crypter des variables de l'inventaire. Ex.
+
     encrypt-ansible nexus_admin_password LeMotDePasse
 
 ## Installer le dépôt du projet
 
 On doit ensuite faire un clone du projet avec la commande git:
 
-git clone --recurse-submodules https://github.com/elfelip/kube-lacave.git
+    git clone --recurse-submodules https://github.com/elfelip/kube-lacave.git
 
 Se déplacer ensuite dans le répertoire kube-lacave/kubespray
 Obtenir toute les branches:
+
     git fetch --all
+
 Faire une checkout de la branche qui contient le correctif pour Fedora CoreOS
+
     git checkout correctif_fedora
     git pull origin correctif_fedora
 
@@ -217,41 +226,52 @@ J'ai utilisé un DVD fait à partir de l'ISO disponible sur le site de Fedora.
 Pour que ca fonctionne avec Crio et Fedora CoreOS, on doit faire manuellement le correctif suivant à Kubespray.
 https://github.com/kubernetes/kubeadm/issues/1495
 
-La modification a été poussée dans mon repository de Kubespray:
-    https://github.com/elfelip/kubespray.git
+La modification a été poussée dans mon repository de Kubespray: https://github.com/elfelip/kubespray.git
 
 ### kube01
 Démarrer à partir du CD.
 
 S'il y a un système d'exploitation sur le disque de destination, il peut être nécessaire de le remettre à 0 en utilisant les commandes suivantes:
+
     DISK="/dev/sda"
     # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
     # You will have to run this step for all disks.
     sudo sgdisk --zap-all $DISK
     # Clean hdds with dd
     sudo dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
+
 Redémarrer ensuite le système
+
     sudo init 6
 On peut ensuite installer l'OS avec la commande suivante:
+
     sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube01.ign --insecure-ignition
+
 L'option --insecure-ignition est nécessaire si le serveur Web n'est pas en https.
 
 Répéter sur les autres noeuds en utilisant les fichier kube0X.ign respectifs:
 
 ### kube02
 
+sur le host kube02:
+
     sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube02.ign --insecure-ignition
 
 ### kube03
+
+sur le host kube03:
 
     sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube03.ign --insecure-ignition
 
 ### kube04
 
+sur le host kube04:
+
     sudo coreos-installer install /dev/sda --ignition-url http://elrond.lacave/kubernetes/kube04.ign --insecure-ignition
 
 ## Ajout du certifact de du root CA dans les trust stores des noeuds
 Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire exécuter le script suivant:
+
     ./copycert.sh
 
 # Préparation de l'inventaire Ansible de Kubespray
@@ -300,10 +320,12 @@ Les configurations spécifiques à chaque noeuds sont dans les fichiers ru répe
 
 Les variables communes sont mises dans le fichier group_vars/all/all.yml
 On y met les configuration propores à l'installation Ansible du serveur de gestion. Ex.
+
     ansible_user: root
     ansible_python_interpreter: /usr/bin/python3
 
 Et on y met aussi les configurations spécifiques aux éléments qu'on veut déployer dans notre cluster. Ex.
+
     project_name: lacave
     global_domain_name: "{{ project_name }}.info"
     kube_domain_name: "kube.{{ global_domain_name }}"
@@ -322,6 +344,7 @@ Et on y met aussi les configurations spécifiques aux éléments qu'on veut dép
             63356536333236386437623034353431613361613534666333323639616432613034613532396535
             3937313837643265650a396562616361323863663830373063646434316362613237626135356338
             6231
+
 Les variables contenant des mot de passes sont cryptés avec le script encrypt-ansible.
 
 ## Choix de la version de Kubernetes
@@ -344,6 +367,7 @@ Pour configurer l'authentification OpenID Connect du cluster, on modifie les var
     kube_oidc_groups_prefix: 'oidc:'
 
 Pour kube-lacave on a les paramètres suivants:
+
     kube_oidc_url: https://login.kube.lacave.info/auth/realms/kubernetes
     kube_oidc_client_id: kubelacave
     ## Optional settings for OIDC
@@ -363,14 +387,17 @@ Les sections suivantes décrivent les composants qu'on a utilisés dans ce proje
 
 ### Kubernetes dashboard
 On peut activer le dashboard avec la variable suivante:
+
     dashboard_enabled: true
 
 ### Helm deployment
 On peut déployer les composants nécessaires à l'utilisation de helm avec la variable suivante:
+
     helm_enabled: true
 
 ### Registry deployment
 Kuberspary peut déployer une registre d'images de conteneurs. Les options pour le registre docker interne son les suivantes:
+
     registry_enabled: true
     registry_namespace: kube-system
     registry_storage_class: "local-path"
@@ -378,6 +405,7 @@ Kuberspary peut déployer une registre d'images de conteneurs. Les options pour 
 
 ### Rancher Local Path Provisioner
 Pour déployer Racher permettant de gérer l'allocation de volume locaux sur les noeuds du cluster, on utilise les variables suivantes:
+
     local_path_provisioner_enabled: true
     local_path_provisioner_namespace: "local-path-storage"
     local_path_provisioner_storage_class: "local-path"
@@ -389,6 +417,7 @@ Pour déployer Racher permettant de gérer l'allocation de volume locaux sur les
 
 ### Nginx ingress controller deployment
 Voici les options pour le déploiement du Ingress NGINX. C'est ce composant qu'on utilie principalelement dans ce projet pour exposer les applications qui sont déployés dans le cluster Kubernetes.
+
     ingress_nginx_enabled: true
     ingress_nginx_host_network: true
     ingress_publish_status_address: ""
@@ -414,6 +443,7 @@ Voici les options pour le déploiement du Ingress NGINX. C'est ce composant qu'o
 
 ### Cert manager deployment
 On pourrait laisser Kubespray déployer le cert-manager mais avec les version expérimentés dans ce projet, il n'a pas été possible de déployer un cert-manager fonctionnels. Il est donc désactivé à ce niveau. Une section plus loin dans le document explique comment le déployer
+
     cert_manager_enabled: false
     #cert_manager_enabled: true
     #cert_manager_namespace: "cert-manager"
@@ -429,6 +459,7 @@ TASK [bootstrap-os : Reboot immediately for updated ostree, please run playbook 
 On doir donc attendre que les serveurs redémarrent et relancer le playbook
 
 Assigner un rôle au noeud kube02:
+
     kubectl label node kube02 node-role.kubernetes.io/worker=worker
 
 Les informations de connexion au cluster sont automatiquement ajouté dans le répertoire inventaire/lacave/
@@ -439,8 +470,11 @@ Ce projet contient le playbook Ansible setup_cluster.yml qui permet d'installer 
 Il permet de faire automatiquement toutes les opérations manuelles décites en Annexe.
 
 Installer les rôles et collections pré-requises a l'exécution du playbook.
+
     ansible-galaxy collection install -r requirements.yml
+
 Pour exécuter le playbook, lancer la commande suivante:
+
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/lacave/inventory.ini setup_cluster.yml
 
 # Configurer Ansible
@@ -506,6 +540,7 @@ Pour obtenir le jeton d'authentification, lancer les commandes suivantes à part
     ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNklrUlhTREJqU....
 
 On peut accéder à la console par l'adresse suivante:
+
     Par un port-forward:
     kubectl port-forward service/kubernetes-dashboard -n kube-system 8443:443
     URL: https://localhost:8443
@@ -544,6 +579,7 @@ Le contexte par défaut est kubernetes-admin@labo.inspq. On peut spécifier le c
 ## Installation cert-manager
 Cert Manager peut être installé par kubespray mais la version déployé semble limité.
 On peut en installer un version plus récente avec la commande suivante:
+
     kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.0.1/cert-manager.yaml
 
 ## Création de l'émetteur de certificat SelfSigned pour lacave
@@ -613,15 +649,18 @@ Les manifest pour créer l'opérateur sont dans le répertoire resources/rook.
 ## Ajout d'un nouveau disque
 En principe, si un nouveau disque vide est attaché à un noeud du cluster, un nouveau OSD devrait être créé automatiquement.
 Dans le cas ou la détection ne fonctionnerait pas on peut redémarrer l'opérateur en supprimant le pod avec la commmande suivante:
+
     kubectl -n rook-ceph delete pod -l app=rook-ceph-operator
 
 ## Outils d'administration de CEPH
 Rook inclu une image toolbox contenant les outils d'administration et de diagnostiques de CEPH. 
 La documentation est disponible à l'adresse https://rook.io/docs/rook/v1.3/ceph-toolbox.html
 Utiliser le manifest suivant pour l'installer:
+
     kubectl apply -f resources/rook/toolbox.yaml
 
 Pour l'utiliser:
+
     kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath='{.items[0].metadata.name}') bash
     ceph status 
     cluster:
@@ -642,8 +681,11 @@ Pour l'utiliser:
     
     io:
         client:   341 B/s wr, 0 op/s rd, 0 op/s wr
+
 On peut créer l'alias suivant pour facluiliter l'utilisation du toolbox.
+
     alias ceph-toolbox='kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath="{.items[0].metadata.name}") bash'
+
 Ajouter cette lign dans votre fichier ~/.bashrc pour que l'alias soit toujours disponible.
 
 # Dépot Nexus
@@ -694,7 +736,8 @@ Pour l'installer, exécuter les commandes suivantes:
     kubectl create namespace pgo
     kubectl apply -f https://raw.githubusercontent.com/CrunchyData/postgres-operator/v4.3.2/installers/kubectl/postgres-operator.yml
 
-    Une fois l'opérateur déployé, on doit avoir les pods suivants dans le namespace pgo:
+Une fois l'opérateur déployé, on doit avoir les pods suivants dans le namespace pgo:
+
     kubectl get pods  -n pgo                
     NAME                                 READY   STATUS      RESTARTS   AGE
     pgo-deploy-m6wx4                     0/1     Completed   0          24h
@@ -707,6 +750,7 @@ Utiliser le script setup_client.sh pour installer l'outil pgo:
     resrouces/crunchy/
 
 Configurer l'environnement. Exécuter les commandes suivantes et les ajouter au ~/.bashrc
+
 export PATH=${HOME}/.pgo/pgo:$PATH
 echo "export PATH=${HOME}/.pgo/pgo:$PATH" >> ~/.bashrc
 export PGOUSER=${HOME}/.pgo/pgo/pgouser
@@ -723,12 +767,15 @@ export PGO_NAMESPACE=pgo
 echo "export PGO_NAMESPACE=pgo" >> ~/.bashrc
 
 Définir les infromation d'authentification:
-echo "$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.username | base64 -d):$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.password | base64 -d)" > ${HOME?}/.pgo/pgouser
+
+    echo "$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.username | base64 -d):$(kubectl get secret -n pgo pgouser-admin -o json | jq -r .data.password | base64 -d)" > ${HOME?}/.pgo/pgouser
 
 Utiliser kubectl pour faire une redirection de port:
+
     kubectl port-forward -n pgo svc/postgres-operator 8443:8443 &
 
 On peut tester le client en exécutant les commandes suivantes:
+
     pgo test --all
     Nothing found.
     
@@ -747,17 +794,10 @@ Voici la commande pour tester le cluster testcluster utilisant rook comme stocka
     users:
             username: testuser password: UnMotDePasseLongEtComplexeGenereAutomatiquementParLOperateur
 
-## Installer pgadmin4
-
-Sur Ubuntu:
-    # Ajouter le clé du repository
-    curl https://www.pgadmin.org/static/packages_pgadmin_org.pub | sudo apt-key add
-    # Ajouter le repository
-    sudo sh -c 'echo "deb https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list && apt update'
-    # Installer pgadmin4
-    sudo apt install pgadmin4-desktop
+# Utilisation d'un client de base de données
 
 Pour se connecter sur la BD:
+
     # Lancer un port-forward
     kubectl -n pgo port-forward svc/testcluster 5432:5432 &
     # Se connecter sur la BD avec pgadmin à l'adresse localhost:5432
@@ -772,6 +812,7 @@ Pour pouvoir utiliser l'authentification OpenID Connect avec le kubeAPI, on doit
 On a décrit, au début de ce document, comment le faire avec Kubespray.
 
 Pour minkube, utiliser les informations sur la page suivante:
+
     https://minikube.sigs.k8s.io/docs/tutorials/openid_connect_auth/
 
 Pour microk8s: J'ai pas trouvé mais ca doit ressembler à minikube.
@@ -816,11 +857,14 @@ Ne pas modifier le nom et cliquer import.
 Sinon, on peut créer les configurations manuellements en suivant les étapes Keycloak décrites dans le reste de ce document.
 
 Si vous n'avez pas importé le realm, aller dans le menu REALM en haut a grauche, cliquer sur le bouton add realm.
+
     Name: kubernetes
+
 Sélectionner ce realm pour les autres étapes.
 
 ## Création du client
 Dans le realm master créer le client suivant:
+
     Client ID: kubelacave
     Root URL: http://localhost:8000
     Client Protocol: openid connect
@@ -877,12 +921,15 @@ Créer le cluster role binding pour OIDC
 
 ## Configuration du client Kubectl pour OpenID Connect
 Installer Kubelogin (dans ~/bin pour un utilisateur norma, dans /usr/local/bin pour une installation globale)
+
     cd ~/bin # ou cd /usr/local/bin
     curl -LO https://github.com/int128/kubelogin/releases/download/v1.19.0/kubelogin_linux_amd64.zip
     unzip kubelogin_linux_amd64.zip
     chmod a+x kubelogin
     ln -s kubelogin kubectl-oidc_login
+
 Sur MacOS
+
     brew install int128/kubelogin/kubelogin
     sudo ln -s /usr/local/bin/kubelogin /usr/local/bin/oidc-login
 
@@ -929,17 +976,20 @@ S'authentifier en tant qu'admin dans Keycloak.
 ## Configuration des rôles pour une architecture mutualisée
 Un cluster mutualisé (multi-tenant) permet le partage des ressources entre plusieurs équipes.
 Le principes est que chaque équipe a un namespace. Il y a 3 types d'utilisateur pour un namespace:
+
     Administrateur du namespace (admin): Cet utilisateur peut effectuer toute les opérations tant qu'elle sont à l'intérieur de son namespace.
     Accès en modification (edit): Cet utilisateur peut créer, modifier et supprimer certains type d'objet dans un namespace comme des pods, des déploiement, des stateful set, des certificats etc. C'est habituellement le rôle qu'on donne au développeur.
     Accès en lecture (view): Ce rôle permet de voir les objets du namespace. Ca peut être utile pour du monitoring au donner des accès a un personne externe à l'équipe.
 
 Dans notre exemple, on configure les rôles pour le namespace default.
 La première étape est de se connecter au serveur Keycloak et de créer les rôles de realm suivants:
+
     default-namespace-admin: Administrateurs du namespace default
     default-namespace-edit: Développeur du namespace default
     default-namespace-view: Consulter les objets du namespace default
 
 On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace default en exécutant le manifest suivant:
+
     kubectl apply -f resources/multitenants-default-role-bindings.yaml
 
 
@@ -949,6 +999,7 @@ On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace d
 Voici les étapes pour ajouter le noeud kube04 au cluster. Ce neoud servira a l'exécution de tâches applicatives (worker node).
 
 La première étape est d'ajouter le nouveau noeud dans le DNS.
+
     Ajouter la lignbe suivante dans le fichier de zone:
         kube04.lacave   IN  A   192.168.1.24
     Incrémenter le nbuméro de série dans l'entête du ficher de zone.
@@ -958,6 +1009,7 @@ La première étape est d'ajouter le nouveau noeud dans le DNS.
 Installer Flatcar Container Linux tel que décrit dans la section de préparation des noeuds. Utiliser le fichier kube04-ignition.json
 
 Copier le certificat sur le nouveau noeud.
+
     scp resources/cert/lacave-root.pem root@kube04:/etc/ssl/certs
     ssh root@kube04 update-ca-certificates
     ssh root@kube04 mkdir -p /etc/kubernetes/ssl
@@ -977,6 +1029,7 @@ Ajouter le noeud dans l'inventaire Ansible. Modifier les sections suivantes du f
     kube04
 
 Vérifier l'état des noeuds déjà en place:
+
     kubectl get nodes
     NAME     STATUS   ROLES    AGE   VERSION
     kube01   Ready    master   20d   v1.18.2
@@ -984,9 +1037,11 @@ Vérifier l'état des noeuds déjà en place:
     kube03   Ready    master   20d   v1.18.2
 
 S'assurer d'être dans le répertoire kube-lacave et lancer le playbook de déploiement du cluster:
+
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/cluster.yml
 
 Vérifier l'état des noeuds:
+
     kubectl get nodes
     NAME     STATUS   ROLES    AGE     VERSION
     kube01   Ready    master   20d     v1.18.2
@@ -995,10 +1050,12 @@ Vérifier l'état des noeuds:
     kube04   Ready    <none>   2m17s   v1.18.2
 
 Assigner un rôle au nouveau noeud:
+
     kubectl label node kube04 node-role.kubernetes.io/worker=worker
 
-Vérifier l'état nes noeuds:
-kubectl get nodes
+Vérifier l'état des noeuds:
+
+    kubectl get nodes
     NAME     STATUS   ROLES    AGE     VERSION
     kube01   Ready    master   20d     v1.18.2
     kube02   Ready    worker   20d     v1.18.2
@@ -1006,9 +1063,11 @@ kubectl get nodes
     kube04   Ready    worker   3m59s   v1.18.2
 
 Dans le cas actuel, le nouveau noeud est équipé d'un disque ssd. On peut donc lui ajouter cet étiquette de manière à pouvoir le sélectionner pour les tâches intensives en io.
+
     kubectl label nodes kube04 disktype=ssd
 
 On devrait avoir l'état final suivant:
+
     kubectl get nodes --show-labels
     NAME     STATUS   ROLES    AGE     VERSION   LABELS
     kube01   Ready    master   20d     v1.18.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=kube01,kubernetes.io/os=linux,node-role.kubernetes.io/master=
@@ -1024,7 +1083,7 @@ Dans ce document, je présente un mise à jour minueure qui fait passer le clust
     Se déplacer dans le projet kube-lacave et mettre à jour le projet
         git pull
     Se déplacer dans le sous-projet kubespray et faire un chackout de la branche master
-        gir checkout master
+        git checkout master
     S'assurer d'avoir le remote upstream de configuré sur le dépôt git officiel de kubespray
         git remote -v
     Sinon, l'ajouter
@@ -1055,6 +1114,7 @@ Dans ce document, je présente un mise à jour minueure qui fait passer le clust
 
 En cas de problème lors de la mise a jour d'un noeud, on peut corriger le situation et lancer de nouveau la mise à jour.
 Il faut remettre en marche les noeud qui étati en cours de mise à jour avec les commandes suivantes:
+
     kubectl get nodes
     NAME     STATUS                     ROLES    AGE   VERSION
     kube01   Ready                      master   27d   v1.18.5
@@ -1077,13 +1137,16 @@ Voici les étapes prises pour mettre à jour le cluster de 1.18.5 vers 1.19.1
 
 Utiliser les mêmes étapes que pour la mise à jour majeure pour mettre à jour Kubespray
 S'assurer que tous les noeuds du cluster sont Ready:
+
     kubectl get nodes
     NAME     STATUS   ROLES    AGE   VERSION
     kube01   Ready    master   99d   v1.18.5
     kube02   Ready    worker   99d   v1.18.5
     kube03   Ready    master   99d   v1.18.5
     kube04   Ready    worker   99d   v1.18.5
+
 Pour mettre à jour le cluster, lancer la commande suivante à partir du serveur de gestion Ansible.
+
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/upgrade-cluster.yml -e kube_version=v1.19.1
 
 ## Supprimer un noeud
@@ -1091,10 +1154,15 @@ Voici les étapes pour supprimer un noeud du cluster Kubernetes.
 Sur le serveur de gestion, se déplacer dans le projet kube-lacave.
 S'assurer que le clone/checkout/pull du sous projet kubespray a été fait.
 Supprimer le noeud avec la commande suivante:
+
     ansible-playbook -i inventory/lacave/inventory.ini -e node=kube04 -e reset_nodes=false kubespray/remove-node.yml
+
 Il est possible que lq dernière étape ne se fasse pas automatiquement. On peut alors finaliser la suppression du noeud avec la commande suivante:
+
     kubectl delete node kube04
+
 Enlever le noeud de l'inventaire: inventory/lacave/inventory.ini
+
     # ## Configure 'ip' variable to bind kubernetes services on a
     # ## different ip than the default iface
     # ## We should set etcd_member_name for etcd cluster. The node that is not a etcd member do not need to set the value, or can set the empty string value.
@@ -1127,7 +1195,9 @@ Enlever le noeud de l'inventaire: inventory/lacave/inventory.ini
     kube-master
     kube-node
     calico-rr    
+
 Ajouter, committer et pousser la modificiation dans le dépôt git:
+
     git add -- inventory/lacave/inventory.ini
     git commit -m "Enlever le noeud kube04"
     git push
@@ -1139,17 +1209,23 @@ La solution la plus populaire pour la surveillance d'un cluster Kubernetes est l
 On utilise la charte helm kube-prometheus pour déployer l'opérateur Prometheus.
 
 Ajouter le repository à votre installation de Helm
+
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
     helm repo add stable https://charts.helm.sh/stable
     helm repo update
+
 Créer le namespace monitoring
+
     kubectl create namespace monitoring
+
 Installer la charte en utilisant les personnalisation de ce projet:
+
     helm install -f resources/monitoring/kube-prometheus-helm-values.yaml lacave-prom prometheus-community/kube-prometheus-stack
 
 Grafana est accessible à l'adresse http://grafana.kube.lacave.info
 L'utilisateur est admin et le mot de passe se retrouve dans le fichier kube-prometheus-helm-values.yaml
 On ajoute les dashboard suivants en allant dans le menu Dashboard -> Manage -> Import
+
     Ceph: ID: 7056
 
 
@@ -1161,9 +1237,11 @@ Voir la page suivante pour une bonne explication de comment ca marche et comment
 ### Surveillance du cluster ceph
 Lors de l'installation du cluster ceph, le monitoring a été configuré par l'opérateur rook. Pour que Prometheus puisse les importer, on doit créer un service monitor:
 Lancer la commande suivante pour le créer:
+
     kubectl apply -f resources/rook/mgr-service-monitor.yaml
 
 On peut ensuite importer un tableau de bord pour ceph dans Grafana. L'identifiant de celui que j'ai utilisé est le 7056:
+
     https://grafana.com/grafana/dashboards/7056
 
 
@@ -1175,21 +1253,28 @@ Cette section décrit les étapes pour déployer les services de journalisation
 Elastic Cloud on Kubernetes. https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html
 
 Installer les CRD et l'opérateur ainsi que ses règles d'accès.
+
     kubectl apply -f https://download.elastic.co/downloads/eck/1.2.1/all-in-one.yaml
 On peut alors surveiller son déploiment
+
     kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 On peut alors créer des cluster Elasticsearch. Dans notre cas, on va en créer un pour recueillir les logs des pods.
+
     kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml
+
 Attendre que le serveur Elastic soit fonctionnel:
+
     watch ubectl get elastic -n elastic-system
     NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
     elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   4m39s
 
 Installer Kibana
+
     kubectl apply -f resources/journalisation/kibana/kube-lacave-kibana-manifest.yaml
 
 Attendre que le serveur Kibana soit disponible:
+
     watch kubectl get elastic -n elastic-system
     NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
     elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   40m
@@ -1198,8 +1283,11 @@ Attendre que le serveur Kibana soit disponible:
     kibana.kibana.k8s.elastic.co/kube-lacave-kibana   green    1       7.9.3     34m
 
 Installer les beats pour recueillir les journaux des conteneurs.
+
     kubectl apply -f resources/journalisation/beats/kube-lacave-beats-manifest.yaml
+
 Attendre que le beat soit disponbile:
+
     watch kubectl get elastic -n elastic-system
     NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
     elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   44m
@@ -1211,55 +1299,68 @@ Attendre que le beat soit disponbile:
     beat.beat.k8s.elastic.co/kube-lacave-beats   green    4           4          filebeat   7.9.3     116s
 
 Pour obtenir le mot de passe de l'utilisateur elastic:
+
     kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
+
 L'URL de kibana est https://kibana.kube.lacave.info
+
     S'authentifier en tant que elsastic avec le mot de passe trouvé à l'étape précédente.
     Naviguer dans le menu dans le haut à gauche de l'écran: menu Observability -> Logs. Cette étape permet de voir si les journaux des beats sont envoyés sur Elasticsearch et visibles par Kibana.
     Naviguer dans le menu Kibana -> Discover. On peut explorer les journaux et faire des requêtes pour les filtrer.
 
 
 Installer APM Server. Cette partie n'est pas fonctionnelle encore...
+
     kubectl apply -f resources/journalisation/apm/kube-lacave-apm-manifest.yaml
 
 ### Ajout de la source de données dans Grafana
 On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Elasticsearch.
-Se connecter à Grafana
-Dans le menu de Configuration -> Datasource.
-Cliquer Add Datasource
-Choisir Elasticsearch
-Entrer les informations suivantes:
-    Name: Elasticsearch
-    HTTP:
-        URL: https://kube-lacave-elasticsearch-es-http.elastic-system.svc:9200
-        Access: Server
-    Auth: Cocher Basic auth et With CA Cert
-    Basic auth details:
-        User: elastic
-        Password: Lancer la commande suivante pour l'obtenir
-        kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
-    TLS Auth Details:
-        CA-cert: Lancer la commande suivante pour l'obtenir
-        kubectl get secret kube-lacave-elasticsearch-es-http-certs-public -o "jsonpath={.data['ca\.crt']}" -n elastic-system | base64 -d; echo
-    Elasticsearch details:
-        Version: 7.0+
-Cliquer Save and Test
+
+    Se connecter à Grafana
+    Dans le menu de Configuration -> Datasource.
+    Cliquer Add Datasource
+    Choisir Elasticsearch
+    Entrer les informations suivantes:
+        Name: Elasticsearch
+        HTTP:
+            URL: https://kube-lacave-elasticsearch-es-http.elastic-system.svc:9200
+            Access: Server
+        Auth: Cocher Basic auth et With CA Cert
+        Basic auth details:
+            User: elastic
+            Password: Lancer la commande suivante pour l'obtenir
+            kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
+        TLS Auth Details:
+            CA-cert: Lancer la commande suivante pour l'obtenir
+            kubectl get secret kube-lacave-elasticsearch-es-http-certs-public -o "jsonpath={.data['ca\.crt']}" -n elastic-system | base64 -d; echo
+        Elasticsearch details:
+            Version: 7.0+
+    Cliquer Save and Test
+
 On ajoute les dashboard suivant en allant dans le menu Dashboard -> Manage -> Import
+
     Elasticsearch: ID: 8715
 
 ## Graylog
 Graylog est aussi utilisé pour recueillir les journaux. On l'utilise pour les journaus applicatifs avec le module GELF.
 Le déploiement de Graylog se fait en 3 étapes.
+
     Déployer un MongoDB
     Déployer Elasticsearch avec ECK
     Déployer Graylog
+
 On doit premièrement créer le Namespace pour Graylog
+
     kubectl apply -f resources/journalisation/graylog/graylog-namespace.yaml
+
 On créé ensuite le certificat SSL
+
     kubectl apply -f resources/journalisation/graylog/graylog-cert-manifest.yaml
 
 ### MongoDB
 On utilise Helm pour déployer MongoDB. Les paramètres à utiliser pour la charte sont dans le fichier resources/journalisation/mongodb/kube-mongodb-helm-values.yaml
 Pour le déployer
+
     Installer le repository Helm:
     helm repo add bitnami https://charts.bitnami.com/bitnami
     Déployer la charte avec les paramètres de notre cluster:
@@ -1300,6 +1401,7 @@ Pour le déployer
 ### Elasticsearch avec Helm
 Lancer la commande suivante pour installer Elasticsearch 6.7.2 avec la charte HELM stable.
 Cette charte est dépréciée. Elle sera remplacé par l'opérateur lorsque Graylog pourra supporter la version 6.8 d'Elasticsearch.
+    
     helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-elasticsearch-helm-values.yaml lacave-graylog-elasticsearch stable/elasticsearch
     This Helm chart is deprecated. Please use https://github.com/elastic/helm-charts/tree/master/elasticsearch instead.
 
@@ -1322,17 +1424,22 @@ Cette charte est dépréciée. Elle sera remplacé par l'opérateur lorsque Gray
 ### Elasticsearch avec l'opérateur
 Ne pas utiliser l'opérateur pour le moment car il ne peut pas installer un version supportés par Graylog pour le moment
 On utilise l'opérateur Elasticsearch déployé dans la section précédente pour le déployer pour Graylog.
-kubectl apply -f resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml
+
+    kubectl apply -f resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml
+
 Pour obtenir le mot de passe de l'utilisateur elastic:
+
     kubectl get secret graylog-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n graylog-system | base64 -d; echo
 
 On doit ajouter ce mot de passe dans la section elasticsearch du fichier resources/journalisation/graylog/graylog-helm-values.yaml
 elasticsearch:
+
     hosts: http://elastic:LeMotDePasse@graylog-elasticsearch-es-http:9200
 
 ### Graylog
 On utilise une charte helms avec u fichier de valeur pour créer le serveur Graylog:
 Déployer le serveur Graylog avec la charte:
+
     helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
         NAME: lacave-graylog
         LAST DEPLOYED: Wed Oct 21 22:34:55 2020
@@ -1374,38 +1481,57 @@ Déployer le serveur Graylog avec la charte:
 
 Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
 Lancer la commande suivante pour modifier le configmap:
+
     kubectl edit configmap lacave-graylog -n graylog-system
+
 Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
+
 Pour: http_external_uri = https://graylog.kube.lacave.info
+
 Arrêter les pods:
+
     kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
+
 Une fois tous les pods supprimé, démarrer les nouveaus pods:
+
     kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
 
 L'interface de GRaylog est disponible par l'URL https://graylog.kube.lacave.info
 Utiliser les informations de connexion selon les instruction donnée lors de l'installation de la charte:
+
     echo "User: admin"
     echo "Password: $(kubectl get secret --namespace graylog-system lacave-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode)"
+
 Créer les inputs suivants:
+
     gelf-tcp: port 12222
     gelf-udp: port 12231
     beats: port 5061
 
 ### Mise à jour de Graylog
 Pour mettre à jour Graylog, modifier la section suivante du fichier resources/journalisation/graylog/graylog-helm-values.yaml
+
     graylog:
     image:
         repository: graylog/graylog:4.0.0-beta.3-1
+
 Mettre à jour la charte avec la commande suivante:
+
     helm upgrade --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
 Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
 Lancer la commande suivante pour modifier le configmap:
+
     kubectl edit configmap lacave-graylog -n graylog-system
+
 Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
 Pour: http_external_uri = https://graylog.kube.lacave.info
+
 Arrêter les pods:
+
     kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
+
 Une fois tous les pods supprimé, démarrer les nouveaus pods:
+
     kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
 
 # Visibilité
@@ -1413,16 +1539,21 @@ Une fois tous les pods supprimé, démarrer les nouveaus pods:
 On utilise l'opérateur Jaeger: https://www.jaegertracing.io/docs/1.20/operator/
 ### Opérateur
 Installer l'opérateur:
+
     kubectl create namespace observability
     kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/crds/jaegertracing.io_jaegers_crd.yaml
     kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/service_account.yaml
     kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role.yaml
     kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role_binding.yaml
     kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/operator.yaml
+
 Activer les rôles pour avoir une portée sur tout le cluster.
+
     kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role.yaml
     kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role_binding.yaml
+
 On peut vérifier que l'opérateur est bien fonctionnel.
+
     kubectl get deployment -n observability
     NAME              READY   UP-TO-DATE   AVAILABLE   AGE
     jaeger-operator   1/1     1            1           117s
@@ -1431,38 +1562,49 @@ On peut vérifier que l'opérateur est bien fonctionnel.
 Voici les étapes:
 
 Créer un secret contenant l'identifiant et le mot de passe pour se connecter à Elasticsearch.
+
     kubectl create secret generic jaeger-es-secret --from-literal=ES_PASSWORD=$(kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d) --from-literal=ES_USERNAME=elastic -n observability
+
 Copier le secret contenant le certificat de Elasticsearch dans le namespace observabitility
+
     kubectl get secret kube-lacave-elasticsearch-es-http-certs-public --namespace=elastic-system -oyaml | grep -v '^\s*namespace:\s' | kubectl apply --namespace=observability -f -
+
 Installer Jaeger:
+
     kubectl create -f resources/jaeger/lacave-jaeger-manifest.yaml
+
 Un ingress est créé automatiquement par le manifest.
 On peut accéder à la console web par l'URL https://jaeger.kube.lacave.info
 Sinon, on peut utiliser le port forward    
+
     kubectl port-forward svc/lacave-jaeger-query -n observability 16686:16686
+
 L'URL est alors http://localhost:16686
 
 
 ### Ajout de la source de données dans Grafana
 On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Jaeger.
-Se connecter à Grafana
-Dans le menu de Configuration -> Datasource.
-Cliquer Add Datasource
-Choisir Jaeger
-Entrer les informations suivantes:
-    Name: Jaeger
-    HTTP:
-        URL: http://lacave-jaeger-query.observability.svc:16686
-        Access: Server
-Cliquer Save and Test
+
+    Se connecter à Grafana
+    Dans le menu de Configuration -> Datasource.
+    Cliquer Add Datasource
+    Choisir Jaeger
+    Entrer les informations suivantes:
+        Name: Jaeger
+        HTTP:
+            URL: http://lacave-jaeger-query.observability.svc:16686
+            Access: Server
+    Cliquer Save and Test
 
 ## Weavescope 
 Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
 
 Pour instller Weavescope, utiliser la commande suivante:
+
     kubectl apply -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')"
 
 Pour accéder à l'interface:
+
     kubectl port-forward svc/weave-scope-app 4040:80 -n weave
 
 L'URL est alors http://localhost:4040
@@ -1480,9 +1622,11 @@ On va ajouter un label ingress-type sur chacun des noeuds pour avoir le ingress 
     kubectl label nodes kube03 kube04 ingress-type=istio
 
 Modifier le ingress nginx:
+
     kubectl -n ingress-nginx edit daemonset ingress-nginx-controller
 
 Ajouter la condition ingress-type dans la partie nodeSelector comme suit et sauvegarder le fichier.
+
       nodeSelector:
         ingress-type: nginx
         kubernetes.io/os: linux
@@ -1502,8 +1646,11 @@ Voici les instructions pour le déployer à partir du premier noeud maitre du cl
 Une fois le déploiement terminé, on peut ajouter le nodeSelector dans le déploiement du ingress istio
 
 Modifier le deployment:
+
     kubectl -n istio-system edit deployment istio-ingressgateway
+
 Ajouter la section suivante dans la partie spec.template.containers[0].affinity
+
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
@@ -1520,10 +1667,14 @@ Ajouter la section suivante dans la partie spec.template.containers[0].affinity
 
 On peut ajouter une adresse IP au Istio Ingress Gateway.
 Modifier le gateway:
+
     kubectl -n istio-system edit svc istio-ingressgateway
+
 Section spec, ajouter les lignes suivantes:
+
     externalIPs:
     - 192.168.1.25
+
 Choisir une adresse IP non utilisée car elle va être ajoutée au hosts qui roulent le gateway.
 
 Pour accéder aux diverses consoles, on peut installer istio sur notre poste. L'outil istioctl va utiliser la configuration par défaut du fichier ~/.kube/config.json pour se connnecter au cluster Kubernetes.
@@ -1548,8 +1699,11 @@ Les consoles disponibles sont:
 Il arrive, lorsqu'on tente de supprimer un namespace, qu'il reste en mode Terminating. Suivre la procédure suivante pour le supprimer:
 
 Lancer une proixy vers le serveur API:
+
     kubectl proxy &
+
 Lancer la commande suivante pour faire un poste sur le endpoint finalize du nampespace:
+
     NS=nomdunamepsaceaeffacer; kubectl get ns ${NS} -o json | jq '.spec.finalizers=[]' | curl -X PUT http://localhost:8001/api/v1/namespaces/${NS}/finalize -H "Content-Type: application/json" --data @-
 
 ## Diagnostique stockage rook-ceph
@@ -1563,13 +1717,20 @@ Le pire c'est de trouver. On peut monitorer les volumes directement sur les host
     /dev/rbd1       1014M   49M  966M   5% /var/lib/kubelet/pods/00db4f27-d730-4acf-a70a-d12c26f6aa18/volumes/kubernetes.io~csi/pvc-a5583652-c700-4074-b03b-843d215a517f/mount
 
 Si on veut savoir quel est l'image Ceph qui contient le volume, exécuter la commande suivante en utiliant le nom du pvc:
+
     kubectl get pv pvc-4a0447ec-15f8-4232-8679-625f0f47be5a --all-namespaces -o json | jq .spec.csi.volumeHandle
     "0001-0009-rook-ceph-0000000000000001-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5"
+
 Lancer le ceph-toolbox en utilisant l'alias créé à l'installation du pod.
+
     ceph-toolbox
+
 ou
+
     kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath="{.items[0].metadata.name}") bash
+
 Faire la liste des images du pool replicapool.
+
     rbd ls replicapool
     csi-vol-29c60437-b7ab-11ea-960f-565d092d059c
     csi-vol-2b906d13-b704-11ea-960f-565d092d059c
@@ -1585,15 +1746,19 @@ Faire la liste des images du pool replicapool.
     csi-vol-f4d2a962-b703-11ea-960f-565d092d059c
     csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5
     csi-vol-f661f514-ebd0-11ea-a3c6-2a04d02621a5
+
 Dans notre cas, le volume en problème correspond à l'image Ceph csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5
 On peut obtenir plus d'information sur l'image rbd avec la commande suivante:
+
     rbd info replicapool/csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5
 
 Pour grossir le volume, ca se fait en deux étapes:
+
     1) Dans le toolbox, grossir l'image avec la commande suivante:
         rbd resize csi-vol-f616fa6e-ebd0-11ea-a3c6-2a04d02621a5 --size=2G --pool=replicapool
     2) Sur l'hôte Linux, grossir le système de fichier
         xfs_growfs /var/lib/kubelet/pods/a0f66ee9-2ad4-471c-88a8-ea7fb2c8e4c5/volumes/kubernetes.io~csi/pvc-4a0447ec-15f8-4232-8679-625f0f47be5a/mount
+
 Il faut donc monitorer les espaces disques directement sur les hôtes Linux
 
 ### Remplacer un OSD non fonctionnels avec rook-ceph
@@ -1601,27 +1766,38 @@ Il faut donc monitorer les espaces disques directement sur les hôtes Linux
 Il peut arriver qu'on des OSD devienne irrécupérable. En principe ca ne cause pas d'arrêt de service car les données sont répliqués sur d'autres OSD. 
 Voici les conditions dans laquelle c'est arrivé.
 Le cluster Kubernetes a 4 noeuds dont 3 sont munis d'un disque disponible pour CEPH. 
+
     osd.0 kube03
     osd.1 kube04
     osd.2 kube02
+
 L'OSD corrompu est le osd.0 dans cet exemple.
 
 Arrêter l'opérateur rook-ceph
+
     kubectl scale deployment -n rook-ceph rook-ceph-operator --replicas 0
+
 Supprimer le déploiement de l'OSD corrompu du serveur Kubernetes
+
     kubectl delete deployment rook-ceph-osd-0 -n rook-ceph
+
 Pour rendre le disque disponible à nouveau ou pour récupérer un disque contenant déjà des données, il faut effacer son contenu en se connectant par ssh sur le serveur kube01.
 Identifier le device associé au nouveau disque, dans mon cas /dev/sdb, et lancer la commande suivante: 
+
     DISK="/dev/sdb"
     # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
     # You will have to run this step for all disks.
     sgdisk --zap-all $DISK
     # Clean hdds with dd
     dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
+
 Un fois le nouveau disque disponible, on peut supprimer l'ancien OSD:
 Se connecter dans le pod ceph-toolbox:
+
     kubectl -n rook-ceph exec -it $(kubectl -n rook-ceph get pod -l "app=rook-ceph-tools" -o jsonpath="{.items[0].metadata.name}") bash
+
 Exécuter les commandes suivantes pour supprimer l'OSD de la configuration de CEPH
+
     [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# OSD=0
     [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd down osd.${OSD}
     osd.0 is already down. 
@@ -1633,9 +1809,13 @@ Exécuter les commandes suivantes pour supprimer l'OSD de la configuration de CE
     updated
     [root@rook-ceph-tools-67788f4dd7-rvvb9 /]# ceph osd rm osd.${OSD}
     removed osd.0    
+
 On peut surveiller l'avancement de la réplication avec la commande suivante:
+
     watch ceph health
+
 Redémarrer l'opérateur rook-ceph
+
     kubectl scale deployment -n rook-ceph rook-ceph-operator --replicas 1
 
 ### Crash log
@@ -1644,33 +1824,50 @@ Le journaux des services qui pont plantés sont contenu dans des crash logs. On 
 Pour accéder au journaux, lancer ceph-toolbox
 
 Pour lister les journaux:
+
     ceph crash ls
     2020-09-28_15:30:43.217140Z_3bfcdf74-ed54-45ba-8e53-fb9460b735a6  osd.0
+
 Pour consulter un journal:
+
     ceph crash info 2020-09-28_15:30:43.217140Z_3bfcdf74-ed54-45ba-8e53-fb9460b735a6
+
 Pour archiver une entrée de journal:
+
     ceph crash archive 2020-09-28_15:30:43.217140Z_3bfcdf74-ed54-45ba-8e53-fb9460b735a6
+
 Pour tout archivé les entrées de journaux:
+
     ceph crash archive-all
 
 ### Corrgier PG damaged et pg inconsistent
 Il peut arriver, après un redémarrage forcé, que le cluster se retrouve en erreur avec le message suivant:
+
     [ERR] PG_DAMAGED: Possible data damage: 1 pg inconsistent
 
 Pour connaitre quel PG est en erreur, lancer le ceph-toolbox
+
     ceph-toolbox
+
 Lancer la commande suivante:
+
     ceph health detail
     HEALTH_ERR 1 scrub errors; Possible data damage: 1 pg inconsistent
     [ERR] OSD_SCRUB_ERRORS: 1 scrub errors
     [ERR] PG_DAMAGED: Possible data damage: 1 pg inconsistent
         pg 1.a is active+clean+inconsistent, acting [2,0,1]
+
 Pour corriger l'erreur, dans ce cas avec le PG 1.a, lancer la commande suivante:
+
     ceph pg repair 1.a
         instructing pg 1.a on osd.2 to repair
+
 On peut surveiller l'état du clueter avec la commande suivante:
+
     watch ceph health detail
+
 Lorsque la tâche de réparation se termin, l'état du clueter devrait être:
+
     HEALTH_OK
     
 ### Mise à jour de l'opérateur rook-ceph et du cluster ceph
@@ -1678,9 +1875,12 @@ Pour mettre à jour l'opérateur et le cluster...
 S'assurer que le cluster en en bonne santé et que tous les osd sont disponibles:
 Lancer le ceph-toolbox
 Obtenir l'état du cluster:
+
     ceph health
     HEALTH_OK
+
 Obtenir l'état des osd:
+
     ceph osd tree
     ID  CLASS  WEIGHT   TYPE NAME        STATUS  REWEIGHT  PRI-AFF
     -1         0.97357  root default                              
@@ -1691,17 +1891,23 @@ Obtenir l'état des osd:
     -3               0      host kube03                           
     -5         0.45479      host kube04                           
     0    hdd  0.45479          osd.0        up   1.00000  1.00000    
+
 #### Mettre à jour l'opérateur
 Pour mettre à jour l'opérateur, on doit modifier le numéro de version dans le manifest qui a été utilisé pour l'installation du cluster.
 Dans notre cas, le fichier resources/rook/operator.yaml. Modifier le numéro de version dans la section suivante:
+
     spec:
       serviceAccountName: rook-ceph-system
       containers:
       - name: rook-ceph-operator
         image: rook/ceph:v1.3.11
+
 Déployer ensuite l'opérateur
+
     kubectl apply -f resources/rook/operator.yaml
+
 Surveiller le déploiement en utilisant la commande suivante et attendre que ca se stabilise:
+
     watch kubectl get pod -n rook-ceph
     NAME                                               READY   STATUS      RESTARTS   AGE
     csi-cephfsplugin-provisioner-6748bb9646-n64lw      5/5     Running     0          18h
@@ -1740,6 +1946,7 @@ Surveiller le déploiement en utilisant la commande suivante et attendre que ca 
 
 #### Mise à jour du cluster
 Pour la mise à jour du cluster, modifier la section suivante manifest utilisé pour créer le cluster. Dans notre cas, resources/rook/cluster.yaml
+
     apiVersion: ceph.rook.io/v1
     kind: CephCluster
     metadata:
@@ -1754,12 +1961,16 @@ Pour la mise à jour du cluster, modifier la section suivante manifest utilisé 
         # If you want to be more precise, you can always use a timestamp tag such ceph/ceph:v14.2.5-20190917
         # This tag might not contain a new Ceph version, just security fixes from the underlying operating system, which will reduce vulnerabilities
         image: ceph/ceph:v15.2.4
+
 Déployer le manifest:
+
     kubectl apply -f resources/rook/cluster.yaml
+
 Attendre que le processus se fasse. Ca peut être très long car chaque composant va se mettre à jour progessivement sans interruption de service.
 
 ## Réseau
 Calico (réseau):
+
     export ETCD_KEY_FILE=/etc/calico/certs/key.pem
     export ETCD_CERT_FILE=/etc/calico/certs/cert.crt 
     export ETCD_CA_CERT_FILE=/etc/calico/certs/ca_cert.crt
@@ -1774,6 +1985,7 @@ La première étape est de graver sur un CD/DVD ou une clé USB l'ISO de Flatcat
 
 La deuxième étape est de créer les fichiers d'intialisation pour les 4 noeuds. On créé ces fichiers sur le serveur de provisionning.
 Voici la strcture du fichier. 
+
     kubeXX-ignition.json
     {
     "ignition": {
@@ -1808,6 +2020,7 @@ Voici la strcture du fichier.
 
 Faire un fichier par noeud (kube01, kube02 et kube03)
 Sur chacun des noeuds:
+
     Démarrer le serveur en utilisant le CD/DVD ou la clé USB
     Télécharger le ficher d'initilisation du serveur en utiliant scp. Ex:
         scp utilisateurprincipal@serveur.provisioning:kubeXX-ignition.json .
@@ -1826,6 +2039,7 @@ Faire le checkout du projet et des sous-projets dans un rpertoire de travail:
     git clone --recursive https://github.com/elfelip/kube-lacave.git
 
 Dans ce projet on utilise 3 noeuds:
+
     kube01: premier master
     kube02: noeud d'exécution d'application
     kube03: deuxième master
