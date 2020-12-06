@@ -77,9 +77,9 @@
   shell:
     cmd: |
       kubectl scale statefulset {{ project_name }}-graylog --replicas 1 -n graylog-system
-- name: Attendre 1 minute que Graylog soit démarré
+- name: Attendre 5 minutes que Graylog soit démarré
   pause:
-    minutes: 1
+    minutes: 5
 - name: Deployer les inputs Graylog
   include_tasks: resources/journalisation/graylog/graylog-inputs-config.yml
 
