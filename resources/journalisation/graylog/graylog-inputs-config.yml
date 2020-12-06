@@ -1,7 +1,7 @@
 ---
 - name: Obtenir la configuration actuelle des Inputs
   uri:
-    url: "{{ graylog_url }}/api/system/inputs"
+    url: "https://{{ graylog_url }}/api/system/inputs"
     user: "admin"
     password: "{{ graylog_password }}"
     return_content: yes
@@ -11,7 +11,7 @@
 
 - name: Configuration de l'input Beats
   uri:
-    url: "{{ graylog_url }}/api/system/inputs"
+    url: "https://{{ graylog_url }}/api/system/inputs"
     user: "admin"
     password: "{{ graylog_password }}"
     method: POST
@@ -25,7 +25,7 @@
   
 - name: Configuration de l'input Gelf TCP
   uri:
-    url: "{{ graylog_url }}/api/system/inputs"
+    url: "https://{{ graylog_url }}/api/system/inputs"
     user: "admin"
     password: "{{ graylog_password }}"
     method: POST
@@ -40,7 +40,7 @@
   
 - name: Configuration de l'input Gelf UDP
   uri:
-    url: "{{ graylog_url }}/api/system/inputs"
+    url: "https://{{ graylog_url }}/api/system/inputs"
     user: "admin"
     password: "{{ graylog_password }}"
     method: POST
@@ -54,7 +54,7 @@
 
 - name: Configuration de l'input Syslog
   uri:
-    url: "{{ graylog_url }}/api/system/inputs"
+    url: "https://{{ graylog_url }}/api/system/inputs"
     user: "admin"
     password: "{{ graylog_password }}"
     method: POST
