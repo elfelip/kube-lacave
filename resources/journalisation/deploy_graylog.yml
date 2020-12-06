@@ -69,14 +69,14 @@
 - name: Arrêter Graylog
   shell:
     cmd: |
-      kubectl scale deployment {{ project_name }}-graylog --replicas 0
+      kubectl scale statefulset {{ project_name }}-graylog --replicas 0
 - name: Attendre 1 minute que Graylog soit arrêté
   pause:
     minutes: 1
 - name: Démarrer Graylog
   shell:
     cmd: |
-      kubectl scale deployment {{ project_name }}-graylog --replicas 1
+      kubectl scale statefulset {{ project_name }}-graylog --replicas 1
 - name: Attendre 1 minute que Graylog soit démarré
   pause:
     minutes: 1

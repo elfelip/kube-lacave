@@ -1486,9 +1486,7 @@ Lancer la commande suivante pour modifier le configmap:
 
 Ou, en ligne de commande:
 
-    kubectl get configmap lacave-graylog -n graylog-system -o json > /tmp/graylog-configmap.json
-    sed -i 's/http_external_uri = http/http_external_uri = https/g' /tmp/graylog-configmap.json
-    kubect apply -f /tmp/graylog-configmap.json
+    kubectl get configmap lacave-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http/http_external_uri = https/g' | kubectl replace -f -
 
 Redémarrer Graylog:
 
