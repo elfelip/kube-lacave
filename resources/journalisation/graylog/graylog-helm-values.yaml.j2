@@ -22,7 +22,7 @@ tags:
 
 graylog:
   image:
-    repository: graylog/graylog:{{ graylog_version | default('4.0.0-beta.3-1') }}
+    repository: graylog/graylog:{{ graylog_version | default('4.0.1') }}
   persistence:
     enabled: true
     storageClass: rook-ceph-block
@@ -48,8 +48,8 @@ graylog:
   rootUsername: "admin"
   rootTimezone: America/Toronto
   elasticsearch:
-    hosts: http://{{ project_name }}-graylog-elasticsearch-client.graylog-system.svc:9200
-    #hosts: http://elastic:{{ graylog_elastic_password }}@{{ project_name }}-graylog-elasticsearch:9200
+    #hosts: http://{{ project_name }}-graylog-elasticsearch-client.graylog-system.svc:9200
+    hosts: http://elastic:{{ graylog_elastic_password }}@{{ project_name }}-graylog-elasticsearch:9200
     # Allow elasticsearch hosts to be fetched from a k8s secret
     # {{ graylog.fullname }}-es will be used as uriSecretName if left empty
     #uriSecretName: "graylog-elasticsearch-es-elastic-user"
@@ -57,21 +57,21 @@ graylog:
     #uriSSL: false
 
   mongodb:
-    uri: mongodb://graylog:graylog@lacave-graylog-mongodb:27017/graylog
-    uriSecretName: lacave-graylog-mongodb
-  externalUri: graylog.kube.lacave.info
+    uri: mongodb://{{ graylog_mongodb_db_username }}:{{ graylog_mongodb_db_password }}@{{ project_name }}-graylog-mongodb:27017/graylog
+    uriSecretName: {{ project_name }}-graylog-mongodb
+  externalUri: graylog.{{ kube_domain_name }}
   ingress:
     enabled: true
     annotations:
       kubernetes.io/ingress.class: "nginx"
-      cert-manager.io/cluster-issuer: ca-lacave-issuer
+      cert-manager.io/cluster-issuer: ca-{{ project_name }}-issuer
       nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     hosts:
-      - graylog.kube.lacave.info
+      - graylog.{{ kube_domain_name }}
     tls:
       - hosts:
-        - graylog.kube.lacave.info
-        secretName: graylog-lacave-tls
+        - graylog.{{ kube_domain_name }}
+        secretName: graylog-{{ project_name }}-tls
   metrics:
     ## If true, prometheus annotations will be attached
     ##

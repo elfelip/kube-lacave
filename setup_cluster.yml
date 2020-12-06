@@ -66,3 +66,6 @@
   - name: Afficher le mot de passe Elastic pour ECK
     debug:
       var: eck_elastic_password
+  - name: Afficher le mot de passe admin pour Graylog
+    debug:
+      var: graylog_password

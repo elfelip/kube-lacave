@@ -47,4 +47,20 @@
 - name: Extraire le mot de passe
   set_fact:
     graylog_elastic_password: "{{ graylog_elastic_password_out.stdout }}"
+- name: Installer Graylog avec la charte Helm
+  community.kubernetes.helm:
+    name: "{{ project_name }}-graylog"
+    chart_ref: stable/graylog
+    release_namespace: graylog-system
+    values: "{{ lookup('template', 'resources/journalisation/graylog/graylog-helm-values.yaml.j2') | from_yaml }}"
+  register: graylog_install_result
+- name: Obtenir le mot de passe admin de l'utilisateur graylog
+  shell: 
+    cmd: |
+      kubectl get secret --namespace graylog-system {{ project_name }}-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode
+  register: graylog_password_out
+- name: Extraire le mot de passe Admin Graylog
+  set_fact:
+    graylog_password: "{{ graylog_password_out.stdout }}"
 
+  
