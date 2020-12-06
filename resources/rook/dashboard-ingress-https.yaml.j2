@@ -13,11 +13,11 @@ spec:
   issuerRef:
     name: ca-{{ project_name }}-issuer
     kind: ClusterIssuer
-  commonName: cephdashboard.{{ kube_domain_name }}
+  commonName: {{ rook_ceph_dashboard_url }}
   organization:
   - {{ project_name }} CA
   dnsNames:
-  - cephdashboard.{{ kube_domain_name }}
+  - {{ rook_ceph_dashboard_url }}
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -33,10 +33,10 @@ metadata:
 spec:
   tls:
    - hosts:
-     - cephdashboard.{{ kube_domain_name }}
+     - {{ rook_ceph_dashboard_url }}
      secretName: cephdashboard-kube-{{ project_name }}-tls
   rules:
-  - host: cephdashboard.{{ kube_domain_name }}
+  - host: {{ rook_ceph_dashboard_url }}
     http:
       paths:
       - path: /

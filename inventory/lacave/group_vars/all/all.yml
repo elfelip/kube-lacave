@@ -115,6 +115,9 @@ self_signed_pki_key_password: !vault |
           64376261343032366462623831396362303264643563616333663737353635646163643332363262
           6362313362333330310a333764383937343630353465306565326432303465626634666136616636
           6535
+rook_ceph_dashboard_url: cephdashboard.{{ kube_domain_name }}
+nexus_docker_repository_url: docker.{{ global_domain_name }}
+nexus_repository_url: nexus.{{ global_domain_name }}
 nexus_admin_password: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
           39386135303762333863353231326461303831306237323235336666633538343539326230323538
@@ -124,6 +127,7 @@ nexus_admin_password: !vault |
           6231
 alertmanager_storage_size: 50Gi
 grafana_version: 7.3.0
+grafana_url: grafana.{{ kube_domain_name }}
 grafana_storage_size: 10Gi
 grafana_admin_password: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
@@ -156,6 +160,7 @@ eck_version: 1.2.1
 eck_elastic_version: 7.9.3
 eck_elasticsearch_storage_size: 100Gi
 eck_kibana_version: 7.9.3
+eck_kibana_url: kibana.{{ kube_domain_name }}
 eck_beats_version: 7.9.3
 graylog_mongodb_version: 4.4.2
 graylog_mongodb_root_password: !vault |
@@ -186,3 +191,4 @@ graylog_elasticsearch_version: 7.9.3
 graylog_elasticsearch_storage_size: 50Gi
 
 graylog_version: 4.0.1
+graylog_url: graylog.{{ kube_domain_name }}

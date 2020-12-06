@@ -23,11 +23,11 @@ spec:
   issuerRef:
     name: ca-{{ project_name }}-issuer
     kind: ClusterIssuer
-  commonName: kibana.{{ kube_domain_name }}
+  commonName: {{ eck_kibana_url }}
   organization:
   - Lacave CA
   dnsNames:
-    - kibana.{{ kube_domain_name }}
+    - {{ eck_kibana_url }}
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
@@ -40,10 +40,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - kibana.{{ kube_domain_name }}
+    - {{ eck_kibana_url }}
     secretName: kibana-{{ project_name }}-tls
   rules:
-    - host: kibana.{{ kube_domain_name }}
+    - host: {{ eck_kibana_url }}
       http:
         paths:
         - path: /

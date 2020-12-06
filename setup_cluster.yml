@@ -60,12 +60,36 @@
     include_tasks: resources/crunchy/deploy_pgo.yml
   #- name: Deployer Keycloak
   #  include_tasks: resources/keycloak/deploy_keycloak.yml
+  - name: URL du dashboard CEPH
+    debug:
+      var: rook_ceph_dashboard_url
   - name: Afficher le mot de passe Dashboard CEPH
     debug:
       var: rook_ceph_dashboard_password
-  - name: Afficher le mot de passe Elastic pour ECK
+  - name: URL de Grafana
+    debug:
+      var: grafana_url
+  - name: Mot de passe admin de Grafana
+    debug:
+      var: grafana_admin_password
+  - name: URL Docker du Nexus
+    debug: 
+      var: nexus_docker_repository_url
+  - name: URL du dépôt Nexus
+    debug:
+      var: nexus_repository_url
+  - name: Mot de passe admin pour le Nexus
+    debug:
+      var: nexus_admin_password
+  - name: URL de Kibana
+    debug:
+      var: eck_kibana_url
+  - name: Afficher le mot de passe elastic pour ECK
     debug:
       var: eck_elastic_password
+  - name: URL de Graylog
+    debug:
+      var: graylog_url
   - name: Afficher le mot de passe admin pour Graylog
     debug:
       var: graylog_password

@@ -3,6 +3,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
     name: nexus
+{% if nexus_docker_repository_url is defined %}
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
@@ -16,11 +17,13 @@ spec:
     # We can reference ClusterIssuers by changing the kind here.
     # The default value is Issuer (i.e. a locally namespaced Issuer)
     kind: ClusterIssuer
-  commonName: docker.{{ global_domain_name }}
+  commonName: {{ nexus_docker_repository_url }}
   organization:
   - {{ project_name }} CA
   dnsNames:
-  - docker.{{ global_domain_name }}
+  - {{ nexus_docker_repository_url }}
+{% endif %}
+{% if nexus_repository_url is defined %}
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
@@ -34,11 +37,12 @@ spec:
     # We can reference ClusterIssuers by changing the kind here.
     # The default value is Issuer (i.e. a locally namespaced Issuer)
     kind: ClusterIssuer
-  commonName: nexus.{{ global_domain_name }}
+  commonName: {{ nexus_repository_url }}
   organization:
   - {{ project_name }} CA
   dnsNames:
-  - nexus.{{ global_domain_name }}        
+  - {{ nexus_repository_url }}        
+{% endif %}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -128,6 +132,7 @@ spec:
           protocol: TCP
           port: 5000
           targetPort: 5000
+{% if nexus_repository_url is defined %}
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
@@ -141,16 +146,18 @@ metadata:
 spec:
   tls:
   - hosts:
-    - nexus.{{ global_domain_name }}
+    - {{ nexus_repository_url }}
     secretName: nexus-{{ project_name }}-tls
   rules:
-  - host: nexus.{{ global_domain_name }}
+  - host: {{ nexus_repository_url }}
     http:
       paths:
       - path: /
         backend:
           serviceName: nexus-service
           servicePort: 8081
+{% endif %}
+{% if nexus_docker_repository_url is defined %}
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
@@ -164,13 +171,14 @@ metadata:
 spec:
   tls:
   - hosts:
-    - docker.{{ global_domain_name }}
+    - {{ nexus_docker_repository_url }}
     secretName: docker-{{ project_name }}-tls
   rules:
-  - host: docker.{{ global_domain_name }}
+  - host: {{ nexus_docker_repository_url }}
     http:
       paths:
       - path: /
         backend:
           serviceName: nexus-service
           servicePort: 5000
+{% endif %}

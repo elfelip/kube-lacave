@@ -12,6 +12,7 @@
   k8s:
     state: present
     definition: "{{ lookup('template','resources/monitoring/certificats-manifest.yaml.j2') }}"
+  when: grafana_url is defined
 - name: Installer le stack Prometheus avec la charte Helm
   community.kubernetes.helm:
     name: "{{ project_name }}-prom"

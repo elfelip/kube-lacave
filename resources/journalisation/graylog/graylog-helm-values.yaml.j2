@@ -36,15 +36,15 @@ graylog:
         loadBalancerIP:
       ports:
         - name: gelf-tcp
-          port: 12222
+          port: {{ graylog_gelf_tcp_port | default(12222) }}
         - name: beats
-          port: 5061
+          port: {{ graylog_beats_port | default(5061) }}
     udp:
       service:
         type: ClusterIP
       ports:
         - name: gelf-udp
-          port: 12231      
+          port: {{ graylog_gelf_udp_port | default(12231) }}      
   rootUsername: "admin"
   rootTimezone: America/Toronto
   elasticsearch:
@@ -59,7 +59,7 @@ graylog:
   mongodb:
     uri: mongodb://{{ graylog_mongodb_db_username }}:{{ graylog_mongodb_db_password }}@{{ project_name }}-graylog-mongodb:27017/graylog
     uriSecretName: {{ project_name }}-graylog-mongodb
-  externalUri: graylog.{{ kube_domain_name }}
+  externalUri: {{ graylog_url }}
   ingress:
     enabled: true
     annotations:
@@ -67,10 +67,10 @@ graylog:
       cert-manager.io/cluster-issuer: ca-{{ project_name }}-issuer
       nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     hosts:
-      - graylog.{{ kube_domain_name }}
+      - {{ graylog_url }}
     tls:
       - hosts:
-        - graylog.{{ kube_domain_name }}
+        - {{ graylog_url }}
         secretName: graylog-{{ project_name }}-tls
   metrics:
     ## If true, prometheus annotations will be attached

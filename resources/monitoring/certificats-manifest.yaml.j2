@@ -9,8 +9,8 @@ spec:
   issuerRef:
     name: ca-{{ project_name }}-issuer
     kind: ClusterIssuer
-  commonName: grafana.{{ kube_domain_name }}
+  commonName: {{ grafana_url }}
   organization:
   - {{ project_name }} CA
   dnsNames:
-  - grafana.{{ kube_domain_name }}
+  - {{ grafana_url }}

@@ -49,6 +49,7 @@ grafana:
   plugins: 
   - grafana-piechart-panel
 
+{% if grafana_url is defined %}
   ingress:
     ## If true, Grafana Ingress will be created
     ##
@@ -60,15 +61,18 @@ grafana:
     # hosts:
     #   - grafana.domain.com
     hosts:
-      - grafana.{{ kube_domain_name }}
+      - {{ grafana_url }}
     ## TLS configuration for grafana Ingress
     ## Secret must be manually created in the namespace
     ##
     tls: 
     - secretName: grafana-tls
       hosts:
-      - grafana.{{ kube_domain_name }}
-
+      - {{ grafana_url }}
+{% else %}
+  ingress:
+    enabled: false
+{% endif %}
 
 ## Component scraping the kube api server
 ##
