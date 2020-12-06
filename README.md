@@ -1488,8 +1488,6 @@ Ou, en ligne de commande:
 
     kubectl get configmap lacave-graylog -n graylog-system -o json > /tmp/graylog-configmap.json
     sed -i 's/http_external_uri = http/http_external_uri = https/g' /tmp/graylog-configmap.json
-    sed -i 's/transport_email_web_interface_url = http/transport_email_web_interface_url = https/g' /tmp/graylog-configmap.json
-    sed -i 's/GRAYLOG_HTTP_PUBLISH_URI=\\\"http/GRAYLOG_HTTP_PUBLISH_URI=\\\"https/g' /tmp/graylog-configmap.json
     kubect apply -f /tmp/graylog-configmap.json
 
 Redémarrer Graylog:

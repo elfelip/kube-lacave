@@ -62,5 +62,24 @@
 - name: Extraire le mot de passe Admin Graylog
   set_fact:
     graylog_password: "{{ graylog_password_out.stdout }}"
+- name: Modifier le configmap pour https
+  shell:
+    cmd: |
+      kubectl get configmap {{ project_name }}-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http/http_external_uri = https/g' | kubectl replace -f -
+- name: Arrêter Graylog
+  shell:
+    cmd: |
+      kubectl scale deployment {{ project_name }}-graylog --replicas 0
+- name: Attendre 1 minute que Graylog soit arrêté
+  pause:
+    minutes: 1
+- name: Démarrer Graylog
+  shell:
+    cmd: |
+      kubectl scale deployment {{ project_name }}-graylog --replicas 1
+- name: Attendre 1 minute que Graylog soit démarré
+  pause:
+    minutes: 1
+
 
   
