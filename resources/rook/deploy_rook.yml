@@ -28,6 +28,7 @@
   k8s:                                                                                                                                                                                                             
     state: present
     definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
+  when: rook_ceph_dashboard_url is defined
 - name: Créer le pool principal rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present

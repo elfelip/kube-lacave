@@ -1484,6 +1484,21 @@ Lancer la commande suivante pour modifier le configmap:
 
     kubectl edit configmap lacave-graylog -n graylog-system
 
+Ou, en ligne de commande:
+
+    kubectl get configmap lacave-graylog -n graylog-system -o json > /tmp/graylog-configmap.json
+    sed -i 's/http_external_uri = http/http_external_uri = https/g' /tmp/graylog-configmap.json
+    sed -i 's/transport_email_web_interface_url = http/transport_email_web_interface_url = https/g' /tmp/graylog-configmap.json
+    sed -i 's/GRAYLOG_HTTP_PUBLISH_URI=\\\"http/GRAYLOG_HTTP_PUBLISH_URI=\\\"https/g' /tmp/graylog-configmap.json
+    kubect apply -f /tmp/graylog-configmap.json
+
+Redémarrer Graylog:
+
+    kubectl scale statefulset lacave-graylog --replicas 0 -n graylog-system
+    kubectl scale statefulset lacave-graylog --replicas 1 -n graylog-system
+
+
+
 Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
 
 Pour: http_external_uri = https://graylog.kube.lacave.info
