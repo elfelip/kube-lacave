@@ -58,5 +58,5 @@
     include_tasks: resources/journalisation/deploy_graylog.yml
   - name: Deployer l'opérateur Postgres
     include_tasks: resources/crunchy/deploy_pgo.yml
-  - name: Deployer Keycloak
-    include_tasks: resources/keycloak/deploy_keycloak.yml
+  #- name: Deployer Keycloak
+  #  include_tasks: resources/keycloak/deploy_keycloak.yml

@@ -32,3 +32,9 @@
     state: present
     definition: "{{ lookup('template','resources/journalisation/kibana/eck-kibana-manifest.yaml.j2') }}"
   register: eck_kibana_install_result
+
+- name: Installer Beats avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/journalisation/beats/eck-beats-manifest.yaml.j2') }}"
+  register: eck_beats_install_result

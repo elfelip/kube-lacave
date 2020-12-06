@@ -156,6 +156,7 @@ eck_version: 1.2.1
 eck_elastic_version: 7.9.3
 eck_elasticsearch_storage_size: 100Gi
 eck_kibana_version: 7.9.3
+eck_beats_version: 7.9.3
 graylog_mongodb_version: 4.4.2
 graylog_mongodb_root_password: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
