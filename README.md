@@ -63,10 +63,10 @@ Le fichier de zone pour lacave est /etc/bind/lacave.info.db
     kube.lacave.info.   IN  A   192.168.1.21
                         IN  A   192.168.1.22
                         IN  A   192.168.1.23
+    
+    *.kube.lacave.info	IN  CNAME	kube.lacave.info.
 
-    Le services peuvent ensuite être publié en créant une entré de type cname. Pour l'application exemple, kubenginx on créé l'entré DNS suivante dans la zone lacave:
-    login.kube.lacave.info       CNAME   kube.lacave.info
-    dashboard.kube.lacave.info   CNAME   kube.lacave.info
+Le CNAME *.kube permet de faire résoudre tous les services publiés dans le cluster tant qu'il sont dans la zone kube.lacave.info
 
 # Création du PKI
 Afin de faciliter le création de certificats self-signed, on se cré un petite infrastructure à clé publique sur le serveur de provisionning.

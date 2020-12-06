@@ -60,3 +60,9 @@
     include_tasks: resources/crunchy/deploy_pgo.yml
   #- name: Deployer Keycloak
   #  include_tasks: resources/keycloak/deploy_keycloak.yml
+  - name: Afficher le mot de passe Dashboard CEPH
+    debug:
+      var: rook_ceph_dashboard_password
+  - name: Afficher le mot de passe Elastic pour ECK
+    debug:
+      var: eck_elastic_password

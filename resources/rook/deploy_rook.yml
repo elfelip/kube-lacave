@@ -24,9 +24,6 @@
 - name: Extraire le mot de passe
   set_fact:
     rook_ceph_dashboard_password: "{{ rook_ceph_dashboard_password_out.stdout }}"
-- name: Afficher le mot de passe Dashboard CEPH
-  debug:
-    var: rook_ceph_dashboard_password
 - name: Installer l'ingress pour le dashboard rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present
