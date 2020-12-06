@@ -51,7 +51,7 @@ graylog:
     #hosts: http://{{ project_name }}-graylog-elasticsearch-client.graylog-system.svc:9200
     hosts: http://elastic:{{ graylog_elastic_password }}@{{ project_name }}-graylog-elasticsearch:9200
     # Allow elasticsearch hosts to be fetched from a k8s secret
-    # {{ graylog.fullname }}-es will be used as uriSecretName if left empty
+    # graylog.fullname-es will be used as uriSecretName if left empty
     #uriSecretName: "graylog-elasticsearch-es-elastic-user"
     #uriSecretKey: ""
     #uriSSL: false
