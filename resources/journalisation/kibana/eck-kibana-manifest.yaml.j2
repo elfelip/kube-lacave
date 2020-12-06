@@ -4,7 +4,7 @@ metadata:
   name: {{ project_name }}-kibana
   namespace: elastic-system
 spec:
-  version: {{ eck_kibana_version | default('7.9.3')) }}
+  version: {{ eck_kibana_version | default('7.9.3') }}
   count: 1
   elasticsearchRef:
     name: {{ project_name }}-elasticsearch
