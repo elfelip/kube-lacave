@@ -80,6 +80,8 @@
 - name: Attendre 1 minute que Graylog soit démarré
   pause:
     minutes: 1
+- name: Deployer les inputs Graylog
+  include_tasks: resources/journalisation/graylog/graylog-inputs-config.yml
 
 
   

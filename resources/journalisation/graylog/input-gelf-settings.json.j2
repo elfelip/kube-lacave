@@ -4,7 +4,7 @@
   "global": true,
   "configuration": {
     "bind_address":"0.0.0.0",
-    "port": {{ graylog_port_gelf }}
+    "port": {{ graylog_gelf_tcp_port | default(12222) }}
   }
 }
 

@@ -4,7 +4,7 @@
   "global": true,
   "configuration": {
     "bind_address":"0.0.0.0",
-    "port": {{ graylog_port_gelf_udp }}
+    "port":{{ graylog_gelf_udp_port | default(12231) }}
   }
 }
 
