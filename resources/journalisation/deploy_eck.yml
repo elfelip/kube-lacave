@@ -1,3 +1,8 @@
+- name: Créer le namespace pour Elastic
+  k8s:
+    kind: namespace
+    name: elastic-system
+    state: present
 - name: Installer l'opérateur ECK
   k8s:                                                                                                                                                                                                             
     definition: '{{ item }}'                                                                                                                                                                                       
