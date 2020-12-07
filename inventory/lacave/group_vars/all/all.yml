@@ -157,7 +157,7 @@ login_keycloak_db_password: !vault |
           6636656165333038610a363034616437643132313931333536626434306430303431396263333463
           35303633323439613232386537656633663063636362373031643336626362316437313265383633
           3362356334643037663932343831346133613363383464343334
-login_keycloak_image: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
+login_keycloak_image: "{{ registry_internal_url }}/{{ project_name }}/keycloak"
 login_keycloak_version: 11.0.3
 login_keycloak_url: login.{{ kube_domain_name }}
 login_keycloak_admin_username: !vault |
