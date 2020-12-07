@@ -9,11 +9,11 @@ spec:
   issuerRef:
     name: ca-{{ project_name }}-issuer
     kind: ClusterIssuer
-  commonName: registry.{{ kube_domain_name }}
+  commonName: {{ kube_registry_url }}
   organization:
   - {{ project_name }} CA
   dnsNames:
-  - registry.{{ kube_domain_name }}
+  - {{ kube_registry_url }}
 ---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
@@ -27,10 +27,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - registry.{{ kube_domain_name }}
+    - {{ kube_registry_url }}
     secretName: registry-{{ project_name }}-tls
   rules:
-  - host: registry.{{ kube_domain_name }}
+  - host: {{ kube_registry_url }}
     http:
       paths:
       - path: /

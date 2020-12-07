@@ -115,6 +115,7 @@ self_signed_pki_key_password: !vault |
           64376261343032366462623831396362303264643563616333663737353635646163643332363262
           6362313362333330310a333764383937343630353465306565326432303465626634666136616636
           6535
+kube_registry_url: registry.{{ kube_domain_name }}
 rook_ceph_dashboard_url: cephdashboard.{{ kube_domain_name }}
 nexus_docker_repository_url: docker.{{ global_domain_name }}
 nexus_repository_url: nexus.{{ global_domain_name }}

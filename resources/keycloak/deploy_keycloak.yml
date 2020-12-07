@@ -27,3 +27,32 @@
   systemd:
     name: pgoapiserverportforward
     state: stopped
+- name: Créer le répertoire temporaire pour créer l'image de base
+  file:
+    dest: /tmp/keycloak
+    state: directory
+- name: Copier les fichers pour l'image dans le répertoire temporaire
+  copy:
+    dest: /tmp/keycloak
+    src: resources/keycloak/image/
+- name: Copier les certificats à insérer dans l'image.
+  copy:
+    src: resources/cert/lacave-root-ca,crt
+    dest: /tmp/keycloak/image
+- name: Créer l'image de base Keycloak
+  docker_image:
+    name: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
+    tag: "{{ login_keycloak_version | default('11.0.3)') }}"
+    source: build
+    build:
+      path: "/tmp/keycloak/image/"
+      dockerfile: "Dockerfile"
+      pull: yes
+      args:
+        KEYCLOAK_IMAGE: "{{ login_lacave_keycloak_base_image | default('jboss/keycloak') }}"
+        KEYCLOAK_VERSION: "{{ login_keycloak_version | default('11.0.3)') }}"
+    state: present
+    force_source: yes
+    force_tag: yes
+    push: yes
+  run_once: true
