@@ -29,16 +29,16 @@
     state: stopped
 - name: Créer le répertoire temporaire pour créer l'image de base
   file:
-    dest: /tmp/keycloak
+    dest: /tmp/keycloak/image
     state: directory
 - name: Copier les fichers pour l'image dans le répertoire temporaire
   copy:
-    dest: /tmp/keycloak
+    dest: /tmp/keycloak/image
     src: resources/keycloak/image/
 - name: Copier les certificats à insérer dans l'image.
   copy:
     src: resources/cert/lacave-root-ca.crt
-    dest: /tmp/keycloak/image
+    dest: /tmp/keycloak/image/lacave-root-ca.crt
 - name: Créer l'image de base Keycloak
   docker_image:
     name: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
