@@ -58,8 +58,11 @@
     include_tasks: resources/journalisation/deploy_graylog.yml
   - name: Deployer l'opérateur Postgres
     include_tasks: resources/crunchy/deploy_pgo.yml
-  #- name: Deployer Keycloak
-  #  include_tasks: resources/keycloak/deploy_keycloak.yml
+  - name: Deployer Keycloak
+    include_tasks: resources/keycloak/deploy_keycloak.yml
+  - name: URL du registre d'image interne du kube
+    debug:
+      var: kube_registry_url
   - name: URL du dashboard CEPH
     debug:
       var: rook_ceph_dashboard_url
