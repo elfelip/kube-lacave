@@ -9,12 +9,11 @@ spec:
   issuerRef:
     name: ca-{{ project_name }}-issuer
     kind: ClusterIssuer
-  commonName: login.kube.{{ project_name }}
+  commonName: {{ login_keycloak_url }}
   organization:
   - {{ project_name }} CA
   dnsNames:
-  - login.kube.{{ project_name }}
-  - login.kube.{{ project_name }}.info
+  - {{ login_keycloak_url }}
 ---
 kind: StatefulSet
 apiVersion: apps/v1
@@ -25,7 +24,7 @@ metadata:
     app: login-{{ project_name }}
 spec:
   serviceName: login-{{ project_name }}
-  replicas: 3
+  replicas: {{ login_keycloak_replicas | default(3) }}
   updateStrategy:
     type: RollingUpdate
     #rollingUpdate:
@@ -85,7 +84,7 @@ spec:
         - name: GRAYLOG_URL
           value: {{ project_name }}-graylog-udp.graylog-system.svc
         - name: GRAYLOG_PORT
-          value: "12231"
+          value: "{{ graylog_gelf_udp_port | default(12231) }}"
         - name: GRAYLOG_HOST_BASE
           valueFrom:
             fieldRef:
@@ -126,10 +125,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - login.{{ kube_domain_name }}
+    - {{ login_keycloak_url }}
     secretName: login-kube-{{ project_name }}-tls
   rules:
-  - host: login.{{ kube_domain_name }}
+  - host: {{ login_keycloak_url }}
     http:
       paths:
       - path: /

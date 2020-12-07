@@ -10,7 +10,9 @@
   tasks:
   - name: Installer le module Kubernetes pour Python3
     apt:
-      name: python3-kubernetes
+      pkg: 
+        - python3-kubernetes
+        - python3-docker
       state: present
     when: ansible_os_family == "Debian"
   - name: Installer les packages Python
@@ -96,3 +98,12 @@
   - name: Afficher le mot de passe admin pour Graylog
     debug:
       var: graylog_password
+  - name: URL du serveur Keycloak principal
+    debug:
+      var: login_keycloak_url
+  - name: Username admin pour Keycloak
+    debug:
+      var: login_keycloak_admin_username
+  - name: Mot de passe admin pour Keycloak
+    debug:
+      var: login_keycloak_admin_password
