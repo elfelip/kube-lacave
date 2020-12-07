@@ -37,8 +37,8 @@
     src: resources/keycloak/image/
 - name: Copier les certificats à insérer dans l'image.
   copy:
-    src: resources/cert/lacave-root-ca.crt
-    dest: /tmp/keycloak/image/lacave-root-ca.crt
+    src: "{{ self_signed_pki_path }}/ca/root-ca.crt"
+    dest: /tmp/keycloak/image/selfsigned-root-ca.crt
 - name: Créer l'image de base Keycloak
   docker_image:
     name: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
@@ -56,3 +56,11 @@
     force_tag: yes
     push: yes
   run_once: true
+- name: Supprimer le répertoire temporaire utilisé pour créer l'image de base
+  file:
+    dest: /tmp/keycloak
+    state: absent
+- name: Installer Keycloak
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('template','resources/keycloak/login-keycloak-manifest.yaml.j2') }}"
