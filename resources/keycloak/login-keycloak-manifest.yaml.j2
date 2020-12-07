@@ -43,7 +43,7 @@ spec:
       - name: regcred
       containers:
       - name: keycloak
-        image: docker.{{ project_name }}.info/{{ project_name }}/keycloak:11.0.3
+        image: {{ login_keycloak_image | default('jboss/keycloak') }}:{{ login_keycloak_version | default('11.0.3') }}
         imagePullPolicy: Always
         env:
         - name: KEYCLOAK_USER

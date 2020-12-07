@@ -37,7 +37,7 @@
     src: resources/keycloak/image/
 - name: Copier les certificats à insérer dans l'image.
   copy:
-    src: resources/cert/lacave-root-ca,crt
+    src: resources/cert/lacave-root-ca.crt
     dest: /tmp/keycloak/image
 - name: Créer l'image de base Keycloak
   docker_image:
