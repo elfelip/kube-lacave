@@ -1,27 +1,27 @@
-- name: Installer l'opérateur rook-ceph
-  k8s:                                                                                                                                                                                                             
-    state: present
-    definition: "{{ lookup('template','resources/rook/operator.yaml.j2') }}"
-  register: ceph_operator_install
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
     src: resources/rook/operator.yaml.j2
     dest: "{{ manifest_dir }}/rook-operator-manifest.yaml"
+- name: Installer l'opérateur rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('template','resources/rook/operator.yaml.j2') }}"
+  register: ceph_operator_install
 - name: Attendre 5 minutes que l'opérateur soit démarré
   pause:
     minutes: 5
   when: ceph_operator_install is defined and ceph_operator_install.changed is defined and ceph_operator_install.changed
-- name: Installer le cluster rook-ceph
-  k8s:                                                                                                                                                                                                             
-    state: present
-    definition: "{{ lookup('template','resources/rook/cluster.yaml.j2') }}"
-  register: ceph_cluster_install
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
     src: resources/rook/cluster.yaml.j2
     dest: "{{ manifest_dir }}/rook-cluster-manifest.yaml"
+- name: Installer le cluster rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('template','resources/rook/cluster.yaml.j2') }}"
+  register: ceph_cluster_install
 - name: Attendre 15 minutes que le cluster soit démarré
   pause:
     minutes: 15
@@ -34,16 +34,16 @@
 - name: Extraire le mot de passe
   set_fact:
     rook_ceph_dashboard_password: "{{ rook_ceph_dashboard_password_out.stdout }}"
-- name: Installer l'ingress pour le dashboard rook-ceph
-  k8s:                                                                                                                                                                                                             
-    state: present
-    definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
-  when: rook_ceph_dashboard_url is defined
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
     src: resources/rook/dashboard-ingress-https.yaml.j2
     dest: "{{ manifest_dir }}/rook-dashboard-ingress-manifest.yaml"
+- name: Installer l'ingress pour le dashboard rook-ceph
+  k8s:                                                                                                                                                                                                             
+    state: present
+    definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
+  when: rook_ceph_dashboard_url is defined
 - name: Créer le pool principal rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present

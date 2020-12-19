@@ -60,6 +60,11 @@
   file:
     dest: /tmp/keycloak
     state: absent
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/keycloak/login-keycloak-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/login-keycloak-manifest.yaml"
 - name: Installer Keycloak
   k8s:                                                                                                                                                                                                             
     state: present

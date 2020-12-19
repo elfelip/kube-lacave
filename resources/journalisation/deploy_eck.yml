@@ -16,17 +16,17 @@
     minutes: 2
   when: eck_operator_install_result is defined and eck_operator_install_result.changed is defined and eck_operator_install_result.changed
 
-- name: Installer Elasticsearch avec l'opérateur ECK
-  k8s:
-    state: present
-    definition: "{{ lookup('template','resources/journalisation/elasticsearch/eck-elasticsearch-manifest.yaml.j2') }}"
-  register: eck_elastic_install_result
-
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
     src: resources/journalisation/elasticsearch/eck-elasticsearch-manifest.yaml.j2
     dest: "{{ manifest_dir }}/eck-elasticsearch-manifest.yaml"
+
+- name: Installer Elasticsearch avec l'opérateur ECK
+  k8s:
+    state: present
+    definition: "{{ lookup('template','resources/journalisation/elasticsearch/eck-elasticsearch-manifest.yaml.j2') }}"
+  register: eck_elastic_install_result
 
 - name: Attendre 2 minutes qu'Elasticsearch soit démarré
   pause:
@@ -43,6 +43,12 @@
   set_fact:
     eck_elastic_password: "{{ eck_elastic_password_out.stdout }}"
 
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/journalisation/kibana/eck-kibana-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/eck-kibana-manifest.yaml"
+
 - name: Installer Kibana avec l'opérateur ECK
   k8s:
     state: present
@@ -52,17 +58,11 @@
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
-    src: resources/journalisation/kibana/eck-kibana-manifest.yaml.j2
-    dest: "{{ manifest_dir }}/eck-kibana-manifest.yaml"
+    src: resources/journalisation/beats/eck-beats-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/eck-beats-manifest.yaml"
 
 - name: Installer Beats avec l'opérateur ECK
   k8s:
     state: present
     definition: "{{ lookup('template','resources/journalisation/beats/eck-beats-manifest.yaml.j2') }}"
   register: eck_beats_install_result
-
-- name: Générer le manifest dans les artefacts
-  local_action:
-    module: template
-    src: resources/journalisation/beats/eck-beats-manifest.yaml.j2
-    dest: "{{ manifest_dir }}/eck-beats-manifest.yaml"
