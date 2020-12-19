@@ -29,6 +29,11 @@
     state: present
     definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
   when: rook_ceph_dashboard_url is defined
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/rook/dashboard-ingress-https.yaml.j2
+    dest: "{{ manifest_dir }}/rook-dashboard-ingress-manifest.yaml"
 - name: Créer le pool principal rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present

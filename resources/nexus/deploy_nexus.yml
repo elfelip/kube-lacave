@@ -3,6 +3,11 @@
     state: present
     definition: "{{ lookup('template','resources/nexus/nexus-manifest.yaml.j2') }}"
   register: nexus_install
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/nexus/nexus-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/nexus-manifest.yaml"
 - name: Attendre 5 minutes que le serveur Nexus soit démarré
   pause:
     minutes: 5

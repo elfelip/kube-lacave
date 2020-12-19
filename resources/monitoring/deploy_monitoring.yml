@@ -13,6 +13,12 @@
     state: present
     definition: "{{ lookup('template','resources/monitoring/certificats-manifest.yaml.j2') }}"
   when: grafana_url is defined
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/monitoring/certificats-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/monitoring-certificats-manifest.yaml"  
+  when: grafana_url is defined
 - name: Installer le stack Prometheus avec la charte Helm
   community.kubernetes.helm:
     name: "{{ project_name }}-prom"
@@ -20,6 +26,11 @@
     release_namespace: monitoring
     values: "{{ lookup('template', 'resources/monitoring/stack-helm-values.yaml.j2') | from_yaml }}"
   register: prometheus_stack_install_result
+- name: Générer le fichier values dans les artefacts
+  local_action:
+    module: template
+    src: resources/monitoring/stack-helm-values.yaml.j2
+    dest: "{{ manifest_dir }}/stack-helm-values.yaml"  
 - name: Attendre 5 minutes que le monitoring soit démarré
   pause:
     minutes: 5

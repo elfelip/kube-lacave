@@ -12,6 +12,11 @@
   k8s:
     state: present
     definition: "{{ lookup('template','resources/journalisation/graylog/graylog-cert-manifest.yaml.j2') }}"
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/journalisation/graylog/graylog-cert-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/graylog-cert-manifest.yaml"
 - name: Installer MongoDB avec la charte Helm
   community.kubernetes.helm:
     name: "{{ project_name }}-graylog-mongodb"
@@ -19,6 +24,11 @@
     release_namespace: graylog-system
     values: "{{ lookup('template', 'resources/journalisation/graylog/graylog-mongodb-helm-values.yaml.j2') | from_yaml }}"
   register: graylog_mongodb_install_result
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/journalisation/graylog/graylog-mongodb-helm-values.yaml.j2
+    dest: "{{ manifest_dir }}/graylog-mongodb-helm-values.yaml"
 - name: Attendre 1 minutes que MongoDB soit démarré
   pause:
     minutes: 1
@@ -35,6 +45,11 @@
     state: present
     definition: "{{ lookup('template','resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml.j2') }}"
   register: graylog_elastic_install_result
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml.j2
+    dest: "{{ manifest_dir }}/graylog-elasticsearch-manifest.yaml"
 - name: Attendre 2 minutes qu'Elasticsearch soit démarré
   pause:
     minutes: 2
@@ -54,6 +69,11 @@
     release_namespace: graylog-system
     values: "{{ lookup('template', 'resources/journalisation/graylog/graylog-helm-values.yaml.j2') | from_yaml }}"
   register: graylog_install_result
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/journalisation/graylog/graylog-helm-values.yaml.j2
+    dest: "{{ manifest_dir }}/graylog-helm-values.yaml"
 - name: Obtenir le mot de passe admin de l'utilisateur graylog
   shell: 
     cmd: |
