@@ -1,7 +1,7 @@
 - name: Installer l'opérateur rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present
-    definition: "{{ lookup('file','resources/rook/operator.yaml') }}"
+    definition: "{{ lookup('template','resources/rook/operator.yaml.j2') }}"
   register: ceph_operator_install
 - name: Attendre 5 minutes que l'opérateur soit démarré
   pause:
@@ -10,7 +10,7 @@
 - name: Installer le cluster rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present
-    definition: "{{ lookup('file','resources/rook/cluster.yaml') }}"
+    definition: "{{ lookup('template','resources/rook/cluster.yaml.j2') }}"
   register: ceph_cluster_install
 - name: Attendre 15 minutes que le cluster soit démarré
   pause:
