@@ -12,8 +12,13 @@
     pgo_manifest_url: "{{ pgo_repository_base_url }}/{{ pgo_version }}/installers/kubectl/postgres-operator.yml"
     eck_manifest_url: "https://download.elastic.co/downloads/eck/{{ eck_version | default('1.2.1') }}/all-in-one.yaml"
     registry_internal_url: registry.kube-system.svc:5000
-    manifest_dir: "inventory/{{ project_name }}/manifest"
+    manifest_dir: "inventory/{{ project_name }}/artifacts/manifests"
   tasks:
+  - name: Créer le répertoire pour les manifests
+    local_action:
+      module: file
+      dest: "{{ manifest_dir }}"
+      state: directory
   - name: Installer le module Kubernetes pour Python3
     apt:
       pkg: 
