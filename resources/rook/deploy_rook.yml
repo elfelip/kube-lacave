@@ -3,6 +3,11 @@
     state: present
     definition: "{{ lookup('template','resources/rook/operator.yaml.j2') }}"
   register: ceph_operator_install
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/rook/operator.yaml.j2
+    dest: "{{ manifest_dir }}/rook-operator-manifest.yaml"
 - name: Attendre 5 minutes que l'opérateur soit démarré
   pause:
     minutes: 5
@@ -12,6 +17,11 @@
     state: present
     definition: "{{ lookup('template','resources/rook/cluster.yaml.j2') }}"
   register: ceph_cluster_install
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/rook/cluster.yaml.j2
+    dest: "{{ manifest_dir }}/rook-cluster-manifest.yaml"
 - name: Attendre 15 minutes que le cluster soit démarré
   pause:
     minutes: 15
