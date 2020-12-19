@@ -24,17 +24,17 @@
 - name: Obtenir le certificat intermédiaire du CA auto signé et l'assembler au certificat intermédiaire
   set_fact:
     self_signed_intemediate_ca_cert: "{{ lookup('file', self_signed_pki_path + '/ca/signing-ca.crt') | string | b64encode }}"
-- name: Installer ClusterIssuer avec le certificat root self-signed
-  k8s:
-    definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'
-    namespace: cert-manager
-    state: present
-  when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined and self_signed_intemediate_ca_cert is defined
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
     src: resources/cert/root-ca-cert-manager.yaml.j2
     dest: "{{ manifest_dir }}/root-ca-cert-manager.yaml"
+  when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined and self_signed_intemediate_ca_cert is defined
+- name: Installer ClusterIssuer avec le certificat root self-signed
+  k8s:
+    definition: '{{ lookup("template", "resources/cert/root-ca-cert-manager.yaml.j2") }}'
+    namespace: cert-manager
+    state: present
   when: self_signed_root_ca_key is defined and self_signed_root_ca_cert is defined and self_signed_intemediate_ca_cert is defined
 - name: Installer le certificat root sur le serveur de Management Debian
   copy:
