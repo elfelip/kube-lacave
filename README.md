@@ -1795,12 +1795,7 @@ Supprimer le déploiement de l'OSD corrompu du serveur Kubernetes
 Pour rendre le disque disponible à nouveau ou pour récupérer un disque contenant déjà des données, il faut effacer son contenu en se connectant par ssh sur le serveur kube01.
 Identifier le device associé au nouveau disque, dans mon cas /dev/sdb, et lancer la commande suivante: 
 
-    DISK="/dev/sdb"
-    # Zap the disk to a fresh, usable state (zap-all is important, b/c MBR has to be clean)
-    # You will have to run this step for all disks.
-    sgdisk --zap-all $DISK
-    # Clean hdds with dd
-    dd if=/dev/zero of="$DISK" bs=1M count=100 oflag=direct,dsync status=progress
+    DISK="/dev/sdb" && sgdisk --zap-all $DISK && dd if=/dev/zero of="$DISK" bs=1M count=1000 oflag=direct,dsync status=progress
 
 Un fois le nouveau disque disponible, on peut supprimer l'ancien OSD:
 Se connecter dans le pod ceph-toolbox:

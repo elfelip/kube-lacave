@@ -1,3 +1,8 @@
+- name: Créer le namespace pour Rook CEPH
+  k8s:
+    kind: namespace
+    name: rook-ceph
+    state: present
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
