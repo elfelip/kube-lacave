@@ -476,6 +476,11 @@ Installer les rôles et collections pré-requises a l'exécution du playbook.
 Pour exécuter le playbook, lancer la commande suivante:
 
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/lacave/inventory.ini setup_cluster.yml
+## Notes installation
+Erreur:
+
+	TASK [Installer ClusterIssuer avec le certificat root self-signed] ******************************************************************************
+fatal: [localhost]: FAILED! => {"changed": false, "error": 500, "msg": "Failed to create object: b'{\"kind\":\"Status\",\"apiVersion\":\"v1\",\"metadata\":{},\"status\":\"Failure\",\"message\":\"Internal error occurred: failed calling webhook \\\\\"webhook.cert-manager.io\\\\\": Post \\\\\"https://cert-manager-webhook.cert-manager.svc:443/mutate?timeout=10s\\\\\": dial tcp 10.233.51.239:443: connect: connection refused\",\"reason\":\"InternalError\",\"details\":{\"causes\":[{\"message\":\"failed calling webhook \\\\\"webhook.cert-manager.io\\\\\": Post \\\\\"https://cert-manager-webhook.cert-manager.svc:443/mutate?timeout=10s\\\\\": dial tcp 10.233.51.239:443: connect: connection refused\"}]},\"code\":500}\\n'", "reason": "Internal Server Error", "status": 500}
 
 # Configurer Ansible
 Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
