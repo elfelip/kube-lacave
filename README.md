@@ -36,11 +36,81 @@ Finalement on peut crypter des variables de l'inventaire. Ex.
     encrypt-ansible nexus_admin_password LeMotDePasse
 
 ## PXE Boot
+Il est possible de provisionner les hôtes en utilisant pxelinux au lieu de l'image ISO. Cette section décrit comment le faire avec isc-dhcp-server, tftpd-hpa et pcelinux sous Ubuntu 20.04.
 
-Pour isc dhcpd: Ajouter les lignes suivantes a la section subnet du fichier /etc/dhcpd
+Pour ce document, on utilise les adresses MAC suivant. Les ajuster en fonction des adresses MAC de vos machines:
 
-    option bootfile-name "pxelinux.0";
-    next-server "192.168.1.10";
+    kube01: AA-AA-AA-AA-AA-AA
+    kube02: AA-AA-AA-AA-AA-AB
+    kube03: AA-AA-AA-AA-AA-AC
+    
+### DHCP
+Pour utiliser pxelinux afin de provisionner les machines physiques (et/ou virtuelles) du custer on doit avoir un serveur dhcp. Dans ce projet on utilise isc-dhcp server sous Ubuntu 20.04.
+
+Installer le logiciel:
+
+    sudo apt install isc-dhcp-server
+    sudo systemctl enable isc-dhcp-server
+    sudo systemctl start isc-dhcp-server
+
+
+Pour PXE, on doit ajouter les lignes dans le fichier /etc/dhcp/dhcpd.conf
+Référence: https://wiki.syslinux.org/wiki/index.php?title=PXELINUX
+
+Paramètres généraux
+
+    allow booting;
+    option space pxelinux;
+    option pxelinux.magic      code 208 = string;
+    option pxelinux.configfile code 209 = text;
+    option pxelinux.pathprefix code 210 = text;
+    option pxelinux.reboottime code 211 = unsigned integer 32;
+
+Section pour le sous-réseau. La seule ligne ajoutée pour le pxe dans cette section est option bootfile-name
+
+    subnet 192.168.1.0 netmask 255.255.255.0 {
+    range 192.168.1.100 192.168.1.200;
+    option domain-name "lacave";
+    option domain-name-servers 192.168.1.10;
+    option routers 192.168.1.1;
+    default-lease-time 600;
+    max-lease-time 7200;
+    option bootfile-name "/pxelinux.0";
+    }
+
+Section pour le groupe d'hôte qui sont client pxelinux. Il fait ajouter une réservation pour chacun des noeuds du cluster avec les paramètres pxe.
+
+group {
+  site-option-space "pxelinux";
+  option pxelinux.magic f1:00:74:7e;
+  if exists dhcp-parameter-request-list {
+    # Always send the PXELINUX options (specified in hexadecimal)
+    option dhcp-parameter-request-list = concat(option dhcp-parameter-request-list,d0,d1,d2,d3);
+  }
+  filename "/pxelinux.0";
+  option pxelinux.configfile = concat("pxelinux.cfg/", binary-to-ascii(16, 8, ":", hardware));
+  option pxelinux.reboottime 30;
+  host kube01 {
+    hardware ethernet aa:aa:aa:aa:aa:aa;
+    fixed-address 192.168.1.21;
+    option host-name "kube01";
+  }
+  host kube02 {
+    hardware ethernet aa:aa:aa:aa:aa:ab;
+    fixed-address 192.168.1.22;
+    option host-name "kube02";
+  }
+  host kube03 {
+    hardware ethernet aa:aa:aa:aa:aa:ac;
+    fixed-address 192.168.1.23;
+    option host-name "kube03";
+  }
+}
+
+Redémarrer le service dhcp
+
+    systemctl restart isc-dhcp-server
+    systemctl status isc-dhcp-server
 
 Installer tftpd
 
@@ -48,10 +118,56 @@ Installer tftpd
     sudo systemctl start tftpd-hpa
     sudo systemctl enable tftpd-hpa
 
-Télécharger les fichiers ISO pour FCOS
+Télécharger les fichiers nécessaire au démarrage d'un noyeaux permettant l'installation pour FCOS
 
+    mkdir data
     docker run --privileged -ti --rm -v $(pwd):/data -w /data quay.io/coreos/coreos-installer:release download -f pxe
 
+Copier les fichiers nécessaires dans le répertoire du serveur tftp (pour Ubuntu /srv/tftp)
+
+Fichiers FCOS
+
+    sudo cp data/* /srv/tftp
+
+Fichiers pxelinus
+    sudo cp /boot/pxelinux.0 /srv/tftp
+    sudo cp /boot/ldlinux.c32 /srv/tftp
+
+Créer les fichiers de configutations pxeboot pour les noeuds du cluster. Le nom du fichier de configuration pour chacun des noeud doit correspondre à son adresse MAC préfixé de 1 (je ne sais pas pourquoi le 1)
+
+Voici les fichiers à créer:
+
+    sudo mkdir /srv/tftp/pxelinux.cfg
+
+Pour kube01: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:aa 
+
+    DEFAULT pxeboot
+    TIMEOUT 20
+    PROMPT 0
+    LABEL pxeboot
+        KERNEL fedora-coreos-33.20201201.3.0-live-kernel-x86_64
+        APPEND initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://elrond.lacave/kubernetes/kube01.ign coreos.inst.insecure
+    IPAPPEND 2
+
+Pour kube02: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:ab 
+
+    DEFAULT pxeboot
+    TIMEOUT 20
+    PROMPT 0
+    LABEL pxeboot
+        KERNEL fedora-coreos-33.20201201.3.0-live-kernel-x86_64
+        APPEND initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://elrond.lacave/kubernetes/kube02.ign coreos.inst.insecure
+    IPAPPEND 2
+
+Pour kube03: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:aa
+
+    DEFAULT pxeboot
+    TIMEOUT 20
+    PROMPT 0
+    LABEL pxeboot
+        KERNEL fedora-coreos-33.20201201.3.0-live-kernel-x86_64
+        APPEND initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://elrond.lacave/kubernetes/kube03.ign coreos.inst.insecure
+    IPAPPEND 2
 
 ## Installer le dépôt du projet
 
@@ -239,7 +355,8 @@ Pour créer le fichier ignition en format JSON utilisable par le processus d'ins
 Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans mopn cas, je les ai mis sur mon serveur elrond qui est en Ubuntu et qui a Apache installé dessus, dans le répertoire /var/www/html/kubernetes
 
 ## Installation de Fedora CoreOS
-J'ai utilisé un DVD fait à partir de l'ISO disponible sur le site de Fedora.
+On peut utiliser un DVD fait à partir de l'ISO disponible sur le site de Fedora.
+Mais dans notre cas, si on a configuré le pxelinux, il suffit de supprimer le contenu des disques des hotes, activer le réseau dans la séquence de démarrage dans le bios des macchines et de les démarrer. L'installation se fera automatiquement avec le bon fichier ignition.
 
 Pour que ca fonctionne avec Crio et Fedora CoreOS, on doit faire manuellement le correctif suivant à Kubespray.
 https://github.com/kubernetes/kubeadm/issues/1495
@@ -247,8 +364,8 @@ https://github.com/kubernetes/kubeadm/issues/1495
 La modification a été poussée dans mon repository de Kubespray: https://github.com/elfelip/kubespray.git
 
 ### kube01
-Démarrer à partir du CD.
-
+Si les disques sont déjà vides et que pxelinux est configuré, il suffit de démarrer la machine.
+Sinon, démarrer à partir du CD.
 S'il y a un système d'exploitation sur le disque de destination, il peut être nécessaire de le remettre à 0 en utilisant les commandes suivantes:
 
     DISK="/dev/sda"
