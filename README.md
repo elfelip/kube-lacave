@@ -35,6 +35,24 @@ Finalement on peut crypter des variables de l'inventaire. Ex.
 
     encrypt-ansible nexus_admin_password LeMotDePasse
 
+## PXE Boot
+
+Pour isc dhcpd: Ajouter les lignes suivantes a la section subnet du fichier /etc/dhcpd
+
+    option bootfile-name "pxelinux.0";
+    next-server "192.168.1.10";
+
+Installer tftpd
+
+    sudo apt install pxelinux
+    sudo systemctl start tftpd-hpa
+    sudo systemctl enable tftpd-hpa
+
+Télécharger les fichiers ISO pour FCOS
+
+    docker run --privileged -ti --rm -v $(pwd):/data -w /data quay.io/coreos/coreos-installer:release download -f pxe
+
+
 ## Installer le dépôt du projet
 
 On doit ensuite faire un clone du projet avec la commande git:
