@@ -1,7 +1,6 @@
-- name: Créer le namespace pour Rook CEPH
+- name: Déployer les éléments communs de rook
   k8s:
-    kind: namespace
-    name: rook-ceph
+    definition: "{{ lookup('file','resources/rook/common.yaml') }}"
     state: present
 - name: Générer le manifest dans les artefacts
   local_action:
@@ -49,15 +48,25 @@
     state: present
     definition: "{{ lookup('template','resources/rook/dashboard-ingress-https.yaml.j2') }}"
   when: rook_ceph_dashboard_url is defined
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/rook/pool.yaml.j2
+    dest: "{{ manifest_dir }}/rook-pool-manifest.yaml"
 - name: Créer le pool principal rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present
-    definition: "{{ lookup('file','resources/rook/pool.yaml') }}"
+    definition: "{{ lookup('template','resources/rook/pool.yaml.j2') }}"
 - name: Créer le storage class rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present
     definition: "{{ lookup('file','resources/rook/storageclass.yaml') }}"
+- name: Générer le manifest dans les artefacts
+  local_action:
+    module: template
+    src: resources/rook/toolbox.yaml.j2
+    dest: "{{ manifest_dir }}/rook-toolbox-manifest.yaml"
 - name: Déployer le toolbox pour rook-ceph
   k8s:                                                                                                                                                                                                             
     state: present
-    definition: "{{ lookup('file','resources/rook/toolbox.yaml') }}"
+    definition: "{{ lookup('template','resources/rook/toolbox.yaml.j2') }}"

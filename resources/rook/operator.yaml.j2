@@ -2,8 +2,7 @@
 # The deployment for the rook operator
 # Contains the common settings for most Kubernetes deployments.
 # For example, to create the rook-ceph cluster:
-#   kubectl create -f common.yaml
-#   kubectl create -f operator.yaml
+#   kubectl create -f crds.yaml -f common.yaml -f operator.yaml
 #   kubectl create -f cluster.yaml
 #
 # Also see other operator sample files for variations of operator.yaml:
@@ -29,12 +28,16 @@ data:
   # Enable the default version of the CSI RBD driver. To start another version of the CSI driver, see image properties below.
   ROOK_CSI_ENABLE_RBD: "true"
   ROOK_CSI_ENABLE_GRPC_METRICS: "true"
-  # Enable deployment of csi-snapshotter sidecar container in ceph-csi provisioner pod.
-  #CSI_ENABLE_SNAPSHOTTER: "true"
 
   # Set logging level for csi containers.
   # Supported values from 0 to 5. 0 for general useful logs, 5 for trace level verbosity.
   # CSI_LOG_LEVEL: "0"
+
+  # OMAP generator will generate the omap mapping between the PV name and the RBD image.
+  # CSI_ENABLE_OMAP_GENERATOR need to be enabled when we are using rbd mirroring feature.
+  # By default OMAP generator sidecar is deployed with CSI provisioner pod, to disable
+  # it set it to false.
+  # CSI_ENABLE_OMAP_GENERATOR: "false"
 
   # Enable cephfs kernel driver instead of ceph-fuse.
   # If you disable the kernel client, your application may be disrupted during upgrade.
@@ -47,12 +50,12 @@ data:
   # The default version of CSI supported by Rook will be started. To change the version
   # of the CSI driver to something other than what is officially supported, change
   # these images to the desired release of the CSI driver.
-  # ROOK_CSI_CEPH_IMAGE: "quay.io/cephcsi/cephcsi:v3.1.1"
-  # ROOK_CSI_REGISTRAR_IMAGE: "quay.io/k8scsi/csi-node-driver-registrar:v1.2.0"
-  # ROOK_CSI_RESIZER_IMAGE: "quay.io/k8scsi/csi-resizer:v0.4.0"
-  # ROOK_CSI_PROVISIONER_IMAGE: "quay.io/k8scsi/csi-provisioner:v1.6.0"
-  # ROOK_CSI_SNAPSHOTTER_IMAGE: "quay.io/k8scsi/csi-snapshotter:v2.1.1"
-  # ROOK_CSI_ATTACHER_IMAGE: "quay.io/k8scsi/csi-attacher:v2.1.0"
+  # ROOK_CSI_CEPH_IMAGE: "quay.io/cephcsi/cephcsi:v3.2.0"
+  # ROOK_CSI_REGISTRAR_IMAGE: "k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.0.1"
+  # ROOK_CSI_RESIZER_IMAGE: "k8s.gcr.io/sig-storage/csi-resizer:v1.0.0"
+  # ROOK_CSI_PROVISIONER_IMAGE: "k8s.gcr.io/sig-storage/csi-provisioner:v2.0.0"
+  # ROOK_CSI_SNAPSHOTTER_IMAGE: "k8s.gcr.io/sig-storage/csi-snapshotter:v3.0.0"
+  # ROOK_CSI_ATTACHER_IMAGE: "k8s.gcr.io/sig-storage/csi-attacher:v3.0.0"
 
   # (Optional) set user created priorityclassName for csi plugin pods.
   # CSI_PLUGIN_PRIORITY_CLASSNAME: "system-node-critical"
@@ -69,6 +72,11 @@ data:
 
   # kubelet directory path, if kubelet configured to use other than /var/lib/kubelet path.
   # ROOK_CSI_KUBELET_DIR_PATH: "/var/lib/kubelet"
+
+  # Labels to add to the CSI CephFS Deployments and DaemonSets Pods.
+  # ROOK_CSI_CEPHFS_POD_LABELS: "key1=value1,key2=value2"
+  # Labels to add to the CSI RBD Deployments and DaemonSets Pods.
+  # ROOK_CSI_RBD_POD_LABELS: "key1=value1,key2=value2"
 
   # (Optional) Ceph Provisioner NodeAffinity.
   # CSI_PROVISIONER_NODE_AFFINITY: "role=storage-node; storage=rook, ceph"
@@ -251,6 +259,18 @@ data:
 
   # Whether the OBC provisioner should watch on the operator namespace or not, if not the namespace of the cluster will be used
   ROOK_OBC_WATCH_OPERATOR_NAMESPACE: "true"
+
+  # (Optional) Admission controller NodeAffinity.
+  # ADMISSION_CONTROLLER_NODE_AFFINITY: "role=storage-node; storage=rook, ceph"
+  # (Optional) Admission controller tolerations list. Put here list of taints you want to tolerate in YAML format.
+  # Admission controller would be best to start on the same nodes as other ceph daemons.
+  # ADMISSION_CONTROLLER_TOLERATIONS: |
+  #   - effect: NoSchedule
+  #     key: node-role.kubernetes.io/controlplane
+  #     operator: Exists
+  #   - effect: NoExecute
+  #     key: node-role.kubernetes.io/etcd
+  #     operator: Exists
 ---
 # OLM: BEGIN OPERATOR DEPLOYMENT
 apiVersion: apps/v1
@@ -274,7 +294,7 @@ spec:
       serviceAccountName: rook-ceph-system
       containers:
       - name: rook-ceph-operator
-        image: rook/ceph:{{ rook_operator_version | default('v1.4.6') }}
+        image: rook/ceph:{{ rook_operator_version | default('v1.5.4') }}
         args: ["ceph", "operator"]
         volumeMounts:
         - mountPath: /var/lib/rook
@@ -349,6 +369,9 @@ spec:
         # (Optional) Discover Agent NodeAffinity.
         # - name: DISCOVER_AGENT_NODE_AFFINITY
         #   value: "role=storage-node; storage=rook, ceph"
+        # (Optional) Discover Agent Pod Labels.
+        # - name: DISCOVER_AGENT_POD_LABELS
+        #   value: "key1=value1,key2=value2"
         # Allow rook to create multiple file systems. Note: This is considered
         # an experimental feature in Ceph as described at
         # http://docs.ceph.com/docs/master/cephfs/experimental-features/#multiple-filesystems-within-a-ceph-cluster
@@ -359,19 +382,6 @@ spec:
         # The logging level for the operator: INFO | DEBUG
         - name: ROOK_LOG_LEVEL
           value: "INFO"
-
-        # The interval to check the health of the ceph cluster and update the status in the custom resource.
-        #- name: ROOK_CEPH_STATUS_CHECK_INTERVAL
-        #  value: "60s"
-
-        # The interval to check if every mon is in the quorum.
-        #- name: ROOK_MON_HEALTHCHECK_INTERVAL
-        #  value: "45s"
-
-        # The duration to wait before trying to failover or remove/replace the
-        # current mon with a new mon (useful for compensating flapping network).
-        #- name: ROOK_MON_OUT_TIMEOUT
-        #  value: "600s"
 
         # The duration between discovering devices in the rook-discover daemonset.
         - name: ROOK_DISCOVER_DEVICES_INTERVAL
@@ -399,7 +409,7 @@ spec:
           value: "false"
 
         # Provide customised regex as the values using comma. For eg. regex for rbd based volume, value will be like "(?i)rbd[0-9]+".
-        # In case of more than one regex, use comma to seperate between them.
+        # In case of more than one regex, use comma to separate between them.
         # Default regex will be "(?i)dm-[0-9]+,(?i)rbd[0-9]+,(?i)nbd[0-9]+"
         # Add regex expression after putting a comma to blacklist a disk
         # If value is empty, the default regex will be used.

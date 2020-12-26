@@ -119,6 +119,7 @@ self_signed_pki_key_password: !vault |
           6535
 kube_registry_url: registry.{{ kube_domain_name }}
 rook_ceph_dashboard_url: cephdashboard.{{ kube_domain_name }}
+rook_ceph_replicapool_size: '2'
 nexus_docker_repository_url: docker.{{ global_domain_name }}
 nexus_repository_url: nexus.{{ global_domain_name }}
 nexus_admin_password: !vault |
