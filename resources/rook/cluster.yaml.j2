@@ -4,8 +4,7 @@
 # in this example. See the documentation for more details on storage settings available.
 
 # For example, to create the cluster:
-#   kubectl create -f common.yaml
-#   kubectl create -f operator.yaml
+#   kubectl create -f crds.yaml -f common.yaml -f operator.yaml
 #   kubectl create -f cluster.yaml
 #################################################################################################################
 
@@ -20,9 +19,9 @@ spec:
     # v13 is mimic, v14 is nautilus, and v15 is octopus.
     # RECOMMENDATION: In production, use a specific version tag instead of the general v14 flag, which pulls the latest release and could result in different
     # versions running within the cluster. See tags available at https://hub.docker.com/r/ceph/ceph/tags/.
-    # If you want to be more precise, you can always use a timestamp tag such ceph/ceph:v15.2.4-20200630
+    # If you want to be more precise, you can always use a timestamp tag such ceph/ceph:v15.2.8-20201217
     # This tag might not contain a new Ceph version, just security fixes from the underlying operating system, which will reduce vulnerabilities
-    image: ceph/ceph:{{ ceph_version | default('v15.2.4') }}
+    image: ceph/ceph:{{ ceph_version | default('v15.2.8') }}
     # Whether to allow unsupported versions of Ceph. Currently `nautilus` and `octopus` are supported.
     # Future versions such as `pacific` would require this to be set to `true`.
     # Do not set to true in production.
@@ -38,7 +37,6 @@ spec:
   skipUpgradeChecks: false
   # Whether or not continue if PGs are not clean during an upgrade
   continueUpgradeAfterChecksEvenIfNotHealthy: false
-  # set the amount of mons to be started
   mon:
     # Set the number of mons to be started. Must be an odd number, and is generally recommended to be 3.
     count: 3
@@ -63,7 +61,7 @@ spec:
   # enable prometheus alerting for cluster
   monitoring:
     # requires Prometheus to be pre-installed
-    enabled: true
+    enabled: {{ rook_ceph_monitoring_enabled | default('false') }}
     # namespace to deploy prometheusRule in. If empty, namespace of the cluster will be used.
     # Recommended:
     # If you have a single rook-ceph cluster, set the rulesNamespace to the same namespace as the cluster or keep it empty.
@@ -90,6 +88,9 @@ spec:
   # enable the crash collector for ceph daemon crash collection
   crashCollector:
     disable: false
+    # Uncomment daysToRetain to prune ceph crash entries older than the
+    # specified number of days.
+    #daysToRetain: 30
   # enable log collector, daemons will log on files and rotate
   # logCollector:
   #   enabled: true
