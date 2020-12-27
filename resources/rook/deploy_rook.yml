@@ -1,3 +1,7 @@
+- name: Déployer les éléments crds de rook
+  k8s:
+    definition: "{{ lookup('file','resources/rook/crds.yaml') }}"
+    state: present
 - name: Déployer les éléments communs de rook
   k8s:
     definition: "{{ lookup('file','resources/rook/common.yaml') }}"
