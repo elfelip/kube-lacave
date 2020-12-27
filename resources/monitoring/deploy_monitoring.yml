@@ -38,7 +38,7 @@
 - name: Générer le manifest dans les artefacts
   local_action:
     module: template
-    src: resources/monitoring/ingress-nginx-monitoring-manifest.yaml
+    src: resources/monitoring/ingress-nginx-monitoring-manifest.yaml.j2
     dest: "{{ manifest_dir }}/ingress-nginx-monitoring-manifest.yaml"  
 - name: Configurer le monitoring pour ingress nginx
   k8s:
