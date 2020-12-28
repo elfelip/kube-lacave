@@ -1,12 +1,3 @@
-- name: Déployer les éléments crds de rook
-  k8s:
-    definition: "{{ lookup('file','resources/rook/crds.yaml') }}"
-    state: present
-  register: rook_crds_out
-- name: Attendre un minute après la création des CRDS ROOK
-  pause:
-    minutes: 1
-  when: rook_crds_out is defined and rook_crds_out.changed is defined and rook_crds_out.changed
 - name: Déployer les éléments communs de rook
   k8s:
     definition: "{{ lookup('file','resources/rook/common.yaml') }}"
