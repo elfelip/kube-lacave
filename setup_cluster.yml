@@ -4,8 +4,8 @@
     helm_install_url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
     cert_manager_version: v1.1.0
     cert_manager_manifest_url: "https://github.com/jetstack/cert-manager/releases/download/{{ cert_manager_version }}/cert-manager.yaml"
-    rook_operator_version: v1.5.4
-    ceph_version: v15.2.8
+    rook_operator_version: v1.4.8
+    ceph_version: v15.2.7
     pgo_version: v4.5.1
     pgo_repository_base_url: https://raw.githubusercontent.com/CrunchyData/postgres-operator
     pgo_client_url: "{{ pgo_repository_base_url }}/{{ pgo_version }}/installers/kubectl/client-setup.sh"
