@@ -1,9 +1,10 @@
 # Projet cluster Kubernetes
-Ce projet permet de créer un cluster Kubernetes sur CoreOS/Flatcar
+Ce projet permet de créer un cluster Kubernetes sur Fedora CoreOS.
+On utilise un serveur de gestion/infrastructure/provisioning. Ce serveur agit en tant que DNS, DHCP, TFTP, PXE et contrôleur Ansible.
 
 # Préparation du serveur de provisionning
 On fait l'installation du cluster à partir d'un ordinateur externe. J'ai utilise une machine Ubuntu pour le faire.
-On choisi un utilisateur de l'OS qui servira à faire les installation. Ca peut être un ustilisateur normal, l'utilisateur Jenkins si Jenkins est utilisé pour lancer les scripts de déploiement ou un utilisateur Ansible.
+On choisi un utilisateur de l'OS qui servira à faire les installation. Ca peut être un utilisateur normal, l'utilisateur Jenkins si Jenkins est utilisé pour lancer les scripts de déploiement ou un utilisateur Ansible.
 
 On dit premièrement générer les clés RSA avec ssh:
 
@@ -68,49 +69,30 @@ Paramètres généraux
 
 Section pour le sous-réseau. La seule ligne ajoutée pour le pxe dans cette section est option bootfile-name
 
-    subnet 192.168.1.0 netmask 255.255.255.0 {
-    range 192.168.1.100 192.168.1.200;
-    option domain-name "lacave";
-    option domain-name-servers 192.168.1.10;
-    option routers 192.168.1.1;
-    default-lease-time 600;
-    max-lease-time 7200;
-    option bootfile-name "/pxelinux.0";
-    }
-
-Section pour le groupe d'hôte qui sont client pxelinux. Il fait ajouter une réservation pour chacun des noeuds du cluster avec les paramètres pxe.
-
-group {
+subnet 192.168.1.0 netmask 255.255.255.0 {
+  range 192.168.1.100 192.168.1.200;
+  option domain-name "lacave";
+  option domain-name-servers 192.168.1.10;
+  option routers 192.168.1.1;
+  default-lease-time 600;
+  max-lease-time 7200;
+  option bootfile-name "/pxelinux.0";
   site-option-space "pxelinux";
   option pxelinux.magic f1:00:74:7e;
   if exists dhcp-parameter-request-list {
     # Always send the PXELINUX options (specified in hexadecimal)
     option dhcp-parameter-request-list = concat(option dhcp-parameter-request-list,d0,d1,d2,d3);
   }
-  filename "/pxelinux.0";
   option pxelinux.configfile = concat("pxelinux.cfg/", binary-to-ascii(16, 8, ":", hardware));
   option pxelinux.reboottime 30;
-  host kube01 {
-    hardware ethernet aa:aa:aa:aa:aa:aa;
-    fixed-address 192.168.1.21;
-    option host-name "kube01";
-  }
-  host kube02 {
-    hardware ethernet aa:aa:aa:aa:aa:ab;
-    fixed-address 192.168.1.22;
-    option host-name "kube02";
-  }
-  host kube03 {
-    hardware ethernet aa:aa:aa:aa:aa:ac;
-    fixed-address 192.168.1.23;
-    option host-name "kube03";
-  }
 }
 
 Redémarrer le service dhcp
 
     systemctl restart isc-dhcp-server
     systemctl status isc-dhcp-server
+
+En cas de problème de configuration, les messages d'erreurs se retrouvent dans le fichier /var/log/syslog
 
 Installer tftpd
 
@@ -129,7 +111,7 @@ Fichiers FCOS
 
     sudo cp data/* /srv/tftp
 
-Fichiers pxelinus
+Fichiers pxelinux
     sudo cp /boot/pxelinux.0 /srv/tftp
     sudo cp /boot/ldlinux.c32 /srv/tftp
 
@@ -146,7 +128,7 @@ Pour kube01: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:aa
     PROMPT 0
     LABEL pxeboot
         KERNEL fedora-coreos-33.20201201.3.0-live-kernel-x86_64
-        APPEND initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://elrond.lacave/kubernetes/kube01.ign coreos.inst.insecure
+        APPEND ip=dhcp rd.neednet=1 initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://192.168.1.10/kubernetes/kube01.ign coreos.inst.insecure
     IPAPPEND 2
 
 Pour kube02: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:ab 
@@ -156,7 +138,7 @@ Pour kube02: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:ab
     PROMPT 0
     LABEL pxeboot
         KERNEL fedora-coreos-33.20201201.3.0-live-kernel-x86_64
-        APPEND initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://elrond.lacave/kubernetes/kube02.ign coreos.inst.insecure
+        APPEND ip=dhcp rd.neednet=1 initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://192.168.1.10/kubernetes/kube02.ign coreos.inst.insecure
     IPAPPEND 2
 
 Pour kube03: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:aa
@@ -166,7 +148,7 @@ Pour kube03: /srv/tftp/pxelinux.cfg/1:aa:aa:aa:aa:aa:aa
     PROMPT 0
     LABEL pxeboot
         KERNEL fedora-coreos-33.20201201.3.0-live-kernel-x86_64
-        APPEND initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://elrond.lacave/kubernetes/kube03.ign coreos.inst.insecure
+        APPEND ip=dhcp rd.neednet=1 initrd=fedora-coreos-33.20201201.3.0-live-initramfs.x86_64.img,fedora-coreos-33.20201201.3.0-live-rootfs.x86_64.img coreos.inst.install_dev=/dev/sda coreos.inst.ignition_url=http://192.168.1.10/kubernetes/kube03.ign coreos.inst.insecure
     IPAPPEND 2
 
 ## Installer le dépôt du projet
@@ -187,8 +169,8 @@ Faire une checkout de la branche qui contient le correctif pour Fedora CoreOS
 
 # Configuration DNS
 
-Dans notre installation, Un serveur DNS bind est installé sur le serveur de povisionning.
-Le fichier de zone pour lacave est /etc/bind/lacave.info.db
+Dans notre installation, Un serveur DNS bind est installé sur le serveur de provisionning.
+Le fichier de zone pour lacave.info est /etc/bind/lacave.info.db
 
     On créé des entres DNS pour les 3 noeuds ainsi que l'entré kube.lacave pour les 3 adresses IP des noeuds du cluster.
     kube01.lacave.info. IN  A   192.168.1.21
@@ -203,7 +185,7 @@ Le fichier de zone pour lacave est /etc/bind/lacave.info.db
 Le CNAME *.kube permet de faire résoudre tous les services publiés dans le cluster tant qu'il sont dans la zone kube.lacave.info
 
 # Création du PKI
-Afin de faciliter le création de certificats self-signed, on se cré un petite infrastructure à clé publique sur le serveur de provisionning.
+Afin de faciliter le création de certificats self-signed, on se crée une infrastructure à clé publique simple sur le serveur de provisionning.
 Référence: https://pki-tutorial.readthedocs.io/en/latest/simple/index.html
 La chaine de confiance ainsi que les clés de ce PKI ne sont pas incluses dans le projet GIT.
 On peut le référencer lorsqu'on utilise le playbook Ansible de configuration du cluster.
@@ -356,7 +338,7 @@ Pour l'installation, on doit mettre les fichiers *.ign sur un serveur Web. Dans 
 
 ## Installation de Fedora CoreOS
 On peut utiliser un DVD fait à partir de l'ISO disponible sur le site de Fedora.
-Mais dans notre cas, si on a configuré le pxelinux, il suffit de supprimer le contenu des disques des hotes, activer le réseau dans la séquence de démarrage dans le bios des macchines et de les démarrer. L'installation se fera automatiquement avec le bon fichier ignition.
+Mais dans notre cas, si on a configuré le pxelinux, il suffit de supprimer le contenu des disques des hôtes, activer le réseau dans la séquence de démarrage du bios des machines et de les démarrer. L'installation se fera automatiquement avec le bon fichier ignition.
 
 Pour que ca fonctionne avec Crio et Fedora CoreOS, on doit faire manuellement le correctif suivant à Kubespray.
 https://github.com/kubernetes/kubeadm/issues/1495
@@ -407,7 +389,7 @@ sur le host kube04:
 ## Ajout du certifact de du root CA dans les trust stores des noeuds
 Pour que docker soit en mesure de se connecter en https sur les services qui ont des certificats émis par notre PKI interne, on doit faire exécuter le script suivant:
 
-    ./copycert.sh
+    ./copycert.sh EMPLACEMENT/CERTIFICAT_ROOT.crt EMPLACEMENT/ROOT.pem
 
 # Préparation de l'inventaire Ansible de Kubespray
 
@@ -486,7 +468,7 @@ Les variables contenant des mot de passes sont cryptés avec le script encrypt-a
 
 Pour spécifier la version de Kubernetes à déployer on modifi la variable suivante du fichier group_vars/k8s-cluster/k8s-cluster.yml
 
-    kube_version: v1.19.3
+    kube_version: v1.19.5
 
 ## Options d'authentification OpenID Connect pour le serveur API
 
@@ -611,26 +593,17 @@ Installer les rôles et collections pré-requises a l'exécution du playbook.
 Pour exécuter le playbook, lancer la commande suivante:
 
     ansible-playbook --vault-id /etc/ansible/passfile -i inventory/lacave/inventory.ini setup_cluster.yml
+
 ## Notes installation
 Erreur:
 
 	TASK [Installer ClusterIssuer avec le certificat root self-signed] ******************************************************************************
 fatal: [localhost]: FAILED! => {"changed": false, "error": 500, "msg": "Failed to create object: b'{\"kind\":\"Status\",\"apiVersion\":\"v1\",\"metadata\":{},\"status\":\"Failure\",\"message\":\"Internal error occurred: failed calling webhook \\\\\"webhook.cert-manager.io\\\\\": Post \\\\\"https://cert-manager-webhook.cert-manager.svc:443/mutate?timeout=10s\\\\\": dial tcp 10.233.51.239:443: connect: connection refused\",\"reason\":\"InternalError\",\"details\":{\"causes\":[{\"message\":\"failed calling webhook \\\\\"webhook.cert-manager.io\\\\\": Post \\\\\"https://cert-manager-webhook.cert-manager.svc:443/mutate?timeout=10s\\\\\": dial tcp 10.233.51.239:443: connect: connection refused\"}]},\"code\":500}\\n'", "reason": "Internal Server Error", "status": 500}
-
-# Configurer Ansible
-Installer les pré-requis pour le module Ansible k8s. Ces instructions sont pour Ubuntu 18.04.
-
-	sudo apt install python3-kubernetes
-	pip3 install openshift --user
-
-# Exécution du playbook de déploiement
-A venir
-On peut exécuter automatiquement les étapes décrite dans le document en exécutant la commande suivante:
-
-    ansible-playbook -c local -i 'localhost,' deploy.yml
     
+# Installation manuelle
+Cette section décrit les étapes qui ont été automatisés. Ces étapes manuelles on servi au développement du script d'automatisation.
 
-# Installer et configurer kubectl sur le serveur de provisionning ou de gestion
+## Installer et configurer kubectl sur le serveur de provisionning ou de gestion
 Pour faciliter les opérations, on installe et configure kubectl sur le serveur Jenkins/Ansible en effectuant les étapes suivantes:
 
 Installer kubectl
@@ -652,7 +625,7 @@ Pour le configurer, récupérer le fichier de configuration .kube/config de un d
 
     scp -r root@kube01:.kube ~
 
-# Déploiement du Dashboard
+## Déploiement du Dashboard
 
 Kubespray déploie automatiquement le dashboard Kubernetes.
 
@@ -661,9 +634,9 @@ On doit toutefois créer l'utilisateur Admin en utilisant le manifeste du sous-r
     kubectl apply -f resources/dashboard-adminuser.yml
 
 
-# Utilisation
+## Utilisation
 
-## Accéder à la console
+### Accéder à la console
 Pour obtenir le jeton d'authentification, lancer les commandes suivantes à partir du premier noeud master du cluster en tant que root:
 
     kubectl get secret -n kube-system
@@ -685,7 +658,7 @@ On peut accéder à la console par l'adresse suivante:
     kubectl port-forward service/kubernetes-dashboard -n kube-system 8443:443
     URL: https://localhost:8443
 
-## Kubectl
+### Kubectl
 L'outil kubectl est installé et configuré automatiquement sur les deux noeuds maitres du cluster Kubernetes: kube01 et kube03 pour l'utilisateur root.
 
 Il est possible de l'installer sur une autre machine. Pour configurer la connexion et l'authentification du client, on peut récupérer les informations qui sont dans le fichier config du répertoire /root/.kube des serveurs maitres. On doit modifier le paramètre server en fonction de l'emplacement réseau. On peut utiliser n'importe quel des noeuds maitre pour se connecter à l'API (kube01 ou kube03).
@@ -714,23 +687,23 @@ Le contexte par défaut est kubernetes-admin@labo.inspq. On peut spécifier le c
 
     kubectl --context=kubernetes-admin@cluster.lacave
 
-# Gestion des certificats
+## Gestion des certificats
 
-## Installation cert-manager
+### Installation cert-manager
 Cert Manager peut être installé par kubespray mais la version déployé semble limité.
 On peut en installer un version plus récente avec la commande suivante:
 
     kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.0.1/cert-manager.yaml
 
-## Création de l'émetteur de certificat SelfSigned pour lacave
+### Création de l'émetteur de certificat SelfSigned pour lacave
 Cert-manager peut créer des certificats en utilisant une autoirité de certification selfsigned. Pour créer cet émetteur au niveau du cluster, exécuter le manifest suivant:
 
     kubectl create -f resources/cert/root-ca-cert-manager.yml
 
-# Stockage
+## Stockage
 Après l'installation de Kubespray avec l'inventaire actuel, seul le stockage local est disponible. Ce stockage n'est ni portable d'un noeud à l'autre ni redontant. 
 
-## Stockage Ceph avec l'opérateur Rook
+### Stockage Ceph avec l'opérateur Rook
 Pour ajouter la redondance au niveau du stockage on va installer l'opérateur CEPH rook: https://rook.io
 
 Cet opérateur scrute continuellement les noeuds du cluster Kubernetes et détecte automatiquement les nouveau disques qui y sont attachés. Si les disques sont vides, il va automatiquement l'ajouter au cluster.
@@ -786,13 +759,13 @@ Les manifest pour créer l'opérateur sont dans le répertoire resources/rook.
     8) Créer le storage class.
         kubectl apply -f resources/rook/storageclass.yaml
 
-## Ajout d'un nouveau disque
+### Ajout d'un nouveau disque
 En principe, si un nouveau disque vide est attaché à un noeud du cluster, un nouveau OSD devrait être créé automatiquement.
 Dans le cas ou la détection ne fonctionnerait pas on peut redémarrer l'opérateur en supprimant le pod avec la commmande suivante:
 
     kubectl -n rook-ceph delete pod -l app=rook-ceph-operator
 
-## Outils d'administration de CEPH
+### Outils d'administration de CEPH
 Rook inclu une image toolbox contenant les outils d'administration et de diagnostiques de CEPH. 
 La documentation est disponible à l'adresse https://rook.io/docs/rook/v1.3/ceph-toolbox.html
 Utiliser le manifest suivant pour l'installer:
@@ -828,7 +801,7 @@ On peut créer l'alias suivant pour facluiliter l'utilisation du toolbox.
 
 Ajouter cette lign dans votre fichier ~/.bashrc pour que l'alias soit toujours disponible.
 
-# Dépot Nexus
+## Dépot Nexus
 Pour entreposer des artefacts, dont les images de conteneurs, on utilise un serveur Nexus.
 Pour le déployer, utiliser le manifest suivant:
 
@@ -837,7 +810,7 @@ Pour le déployer, utiliser le manifest suivant:
 Le serveur nexus est accessible par l'URL https://nexus.lacave.info
 Le dépôt d'images de conteneurs est docker.lacave.info
 
-# Authentification au registre Docker du Nexus
+## Authentification au registre Docker du Nexus
 
 Suivre les étapes suivantes pour créer un secret utilisable par Kubernetes pour s'authentifier auprès du registre Docker du serveur Nexus:
 Référence: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -867,10 +840,10 @@ Créer le secret dans Kubernetes:
 
 Ce secret doit être créé dans chacun des Namespace qui utilise le registre privé.
 
-# Operateur Postgresql
+## Operateur Postgresql
 Crunchy Data font un opérateur permettant de créer de cluster Postegresql redondant. https://github.com/CrunchyData/postgres-operator
 
-## Installer l'opérateur
+### Installer l'opérateur
 Pour l'installer, exécuter les commandes suivantes:
 
     kubectl create namespace pgo
@@ -883,7 +856,7 @@ Une fois l'opérateur déployé, on doit avoir les pods suivants dans le namespa
     pgo-deploy-m6wx4                     0/1     Completed   0          24h
     postgres-operator-5d486cb469-9kkws   4/4     Running     1          24h
 
-## Installer le client
+### Installer le client
 
 Utiliser le script setup_client.sh pour installer l'outil pgo:
 
@@ -923,7 +896,7 @@ On peut tester le client en exécutant les commandes suivantes:
     pgo client version 4.3.2
     pgo-apiserver version 4.3.2
 
-## Créer un cluster
+### Créer un cluster
 
 Voici la commande pour tester le cluster testcluster utilisant rook comme stockage
 
@@ -934,7 +907,7 @@ Voici la commande pour tester le cluster testcluster utilisant rook comme stocka
     users:
             username: testuser password: UnMotDePasseLongEtComplexeGenereAutomatiquementParLOperateur
 
-# Utilisation d'un client de base de données
+## Utilisation d'un client de base de données
 
 Pour se connecter sur la BD:
 
@@ -946,7 +919,7 @@ Pour se connecter sur la BD:
     # On peut obtenir le mot de passe avecla commande suivante:
     kubectl get secret -n pgo testcluster-testuser-secret -o json | jq -r .data.password | base64 -d
 
-# Configuration OpenID Connect
+## Configuration OpenID Connect
 
 Pour pouvoir utiliser l'authentification OpenID Connect avec le kubeAPI, on doit avoir confiuguré le cluster en lui fournissant les informations nécessaire: URL du serveur Keycloak, client ID etc.
 On a décrit, au début de ce document, comment le faire avec Kubespray.
@@ -957,7 +930,7 @@ Pour minkube, utiliser les informations sur la page suivante:
 
 Pour microk8s: J'ai pas trouvé mais ca doit ressembler à minikube.
 
-## Création de la base de données
+### Création de la base de données
 Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par l'opérateur Crunchy
 
     # Créer le namespace
@@ -965,13 +938,13 @@ Pour mettre les données de Keycloak, on utilise un cluster Postgres créé par 
     # Créer le cluster de base de données et la base de données de Keycloak
     pgo create cluster loginlacavecluster -n kcdatabases --database=keycloak --username=keycloak --password=keycloak --storage-config=rook --pgbackrest-storage-config=rook --metrics
 
-## Créer l'image Keycloak avec les scripts supportant le clustering.
+### Créer l'image Keycloak avec les scripts supportant le clustering.
 Pour mettre Keycloak en cluster, on utilise le protocol JDBC_PING pour le Jgroups. Pour ce faire, des scripts doivent être ajouté à l'image de base de Keycloak. Ces scripts sont inclus dans le présent projet, pour créer l'image Keycloak, lancer les commmandes suivantes:
 
     docker build --tag docker.lacave.info/lacave/keycloak:11.0.3 resources/keycloak/image/
     docker push docker.lacave.info/lacave/keycloak:11.0.3
 
-## Installation de Keycloak
+### Installation de Keycloak
 Pour faire l'authentification des utilisateurs sur le cluster on install un serveur Keycloak.
 Lancer le manifest suivant pour créer le serveur Keycloak.
 
@@ -984,7 +957,7 @@ S'authentifier en tant que l'utilisateur admin/admin
 
 S.V.P. Changer le mot de passe
 
-## Création du REALM
+### Création du REALM
 Pour la sécurité de Kubernetes on créé le REALM kubernetes.
 
 Pour créer le realm kubernetes, on peut importer le fichier resources/keycloak/kubernetes-realm.json.
@@ -1002,7 +975,7 @@ Si vous n'avez pas importé le realm, aller dans le menu REALM en haut a grauche
 
 Sélectionner ce realm pour les autres étapes.
 
-## Création du client
+### Création du client
 Dans le realm master créer le client suivant:
 
     Client ID: kubelacave
@@ -1016,7 +989,7 @@ Dans le realm master créer le client suivant:
 Ajouter dans l'onglet mappers, cliquer Add builtin, sélectionner groups et cliquer Add selected
 Dans l'onglet Roles, Ajouter le rôle kubernetes-user
 
-## Création du scope de client
+### Création du scope de client
 Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit créer le client scope suivant:
 
     Dans le menu Client Scope cliquer sur le bouton Create.
@@ -1044,7 +1017,7 @@ Pour que Keycloak configure l'audience dans le jeton d'authentification, on doit
     Cocher groups et cliquer Save
 
 
-## Création du rôle de REALM pour les administrateurs du cluster
+### Création du rôle de REALM pour les administrateurs du cluster
 
 Dans le menu Roles: Créer le rôle cluster-admin et cliquer Save
 
@@ -1053,13 +1026,13 @@ Dans le menu Users:
 Créer l'utilisateur admin, lui définir un mot de passe complex.
 Dans l'onglet Role Mappings, lui assigner le rôle cluster-admin.
 
-## Créer l'association du rôle OIDC de cluster admin dans Kubernetes
+### Créer l'association du rôle OIDC de cluster admin dans Kubernetes
 Créer le cluster role binding pour OIDC
 
     kubectl apply -f resources/keycloak/oidc-cluster-admin-role-binding.yaml
 
 
-## Configuration du client Kubectl pour OpenID Connect
+### Configuration du client Kubectl pour OpenID Connect
 Installer Kubelogin (dans ~/bin pour un utilisateur norma, dans /usr/local/bin pour une installation globale)
 
     cd ~/bin # ou cd /usr/local/bin
@@ -1101,7 +1074,7 @@ Pour utililiser ce profil:
 
 S'authentifier en tant qu'admin dans Keycloak si vous ne l'êtes pas déjà.
 
-## Proxy Open ID Connect pour la Dashboard
+### Proxy Open ID Connect pour la Dashboard
 
 On créé un proxy Keycloak qui permet d'accéder au tableau de bord Kubernetes avec une Authentificaiton OpenID Connect.
 
@@ -1113,7 +1086,7 @@ S'assurer que l'entré DNS dashboard.kube.lacave existe dans le DNS et pointe ve
 On peut accéder au Dashboard par l'adresse https://dashboard.kube.lacave.info
 S'authentifier en tant qu'admin dans Keycloak.
 
-## Configuration des rôles pour une architecture mutualisée
+### Configuration des rôles pour une architecture mutualisée
 Un cluster mutualisé (multi-tenant) permet le partage des ressources entre plusieurs équipes.
 Le principes est que chaque équipe a un namespace. Il y a 3 types d'utilisateur pour un namespace:
 
@@ -1132,6 +1105,506 @@ On créé ensuite les appartenances de rôles (RoleBindings) dans le namespace d
 
     kubectl apply -f resources/multitenants-default-role-bindings.yaml
 
+# Monitoring
+La solution la plus populaire pour la surveillance d'un cluster Kubernetes est la combinaison Prometheus et Grafana.
+
+## Installation de Prometheus, Grafana et Node Exporter avec une charte helm
+On utilise la charte helm kube-prometheus pour déployer l'opérateur Prometheus.
+
+Ajouter le repository à votre installation de Helm
+
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo add stable https://charts.helm.sh/stable
+    helm repo update
+
+Créer le namespace monitoring
+
+    kubectl create namespace monitoring
+
+Installer la charte en utilisant les personnalisation de ce projet:
+
+    helm install -f resources/monitoring/kube-prometheus-helm-values.yaml lacave-prom prometheus-community/kube-prometheus-stack
+
+Grafana est accessible à l'adresse http://grafana.kube.lacave.info
+L'utilisateur est admin et le mot de passe se retrouve dans le fichier kube-prometheus-helm-values.yaml
+On ajoute les dashboard suivants en allant dans le menu Dashboard -> Manage -> Import
+
+    Ceph: ID: 7056
+
+
+### Service monitor
+Pour monitorer un composants, on doit crée une ressource ServiceMonitor qui décrit quel est le service de notre composant quyi expose les métriques pour Prometheus.
+
+Voir la page suivante pour une bonne explication de comment ca marche et comment on peut diagnostiquer les problèmes de récupération des métriques: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/troubleshooting.md
+
+### Surveillance du cluster ceph
+Lors de l'installation du cluster ceph, le monitoring a été configuré par l'opérateur rook. Pour que Prometheus puisse les importer, on doit créer un service monitor:
+Lancer la commande suivante pour le créer:
+
+    kubectl apply -f resources/rook/mgr-service-monitor.yaml
+
+On peut ensuite importer un tableau de bord pour ceph dans Grafana. L'identifiant de celui que j'ai utilisé est le 7056:
+
+    https://grafana.com/grafana/dashboards/7056
+
+
+## Journalisation
+Cette section décrit les étapes pour déployer les services de journalisation
+
+### ECK
+
+Elastic Cloud on Kubernetes. https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html
+
+Installer les CRD et l'opérateur ainsi que ses règles d'accès.
+
+    kubectl apply -f https://download.elastic.co/downloads/eck/1.2.1/all-in-one.yaml
+On peut alors surveiller son déploiment
+
+    kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
+
+On peut alors créer des cluster Elasticsearch. Dans notre cas, on va en créer un pour recueillir les logs des pods.
+
+    kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml
+
+Attendre que le serveur Elastic soit fonctionnel:
+
+    watch ubectl get elastic -n elastic-system
+    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
+    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   4m39s
+
+Installer Kibana
+
+    kubectl apply -f resources/journalisation/kibana/kube-lacave-kibana-manifest.yaml
+
+Attendre que le serveur Kibana soit disponible:
+
+    watch kubectl get elastic -n elastic-system
+    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
+    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   40m
+
+    NAME                                              HEALTH   NODES   VERSION   AGE
+    kibana.kibana.k8s.elastic.co/kube-lacave-kibana   green    1       7.9.3     34m
+
+Installer les beats pour recueillir les journaux des conteneurs.
+
+    kubectl apply -f resources/journalisation/beats/kube-lacave-beats-manifest.yaml
+
+Attendre que le beat soit disponbile:
+
+    watch kubectl get elastic -n elastic-system
+    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
+    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   44m
+
+    NAME                                              HEALTH   NODES   VERSION   AGE
+    kibana.kibana.k8s.elastic.co/kube-lacave-kibana   green    1       7.9.3     38m
+
+    NAME                                         HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
+    beat.beat.k8s.elastic.co/kube-lacave-beats   green    4           4          filebeat   7.9.3     116s
+
+Pour obtenir le mot de passe de l'utilisateur elastic:
+
+    kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
+
+L'URL de kibana est https://kibana.kube.lacave.info
+
+    S'authentifier en tant que elsastic avec le mot de passe trouvé à l'étape précédente.
+    Naviguer dans le menu dans le haut à gauche de l'écran: menu Observability -> Logs. Cette étape permet de voir si les journaux des beats sont envoyés sur Elasticsearch et visibles par Kibana.
+    Naviguer dans le menu Kibana -> Discover. On peut explorer les journaux et faire des requêtes pour les filtrer.
+
+
+Installer APM Server. Cette partie n'est pas fonctionnelle encore...
+
+    kubectl apply -f resources/journalisation/apm/kube-lacave-apm-manifest.yaml
+
+#### Ajout de la source de données dans Grafana
+On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Elasticsearch.
+
+    Se connecter à Grafana
+    Dans le menu de Configuration -> Datasource.
+    Cliquer Add Datasource
+    Choisir Elasticsearch
+    Entrer les informations suivantes:
+        Name: Elasticsearch
+        HTTP:
+            URL: https://kube-lacave-elasticsearch-es-http.elastic-system.svc:9200
+            Access: Server
+        Auth: Cocher Basic auth et With CA Cert
+        Basic auth details:
+            User: elastic
+            Password: Lancer la commande suivante pour l'obtenir
+            kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
+        TLS Auth Details:
+            CA-cert: Lancer la commande suivante pour l'obtenir
+            kubectl get secret kube-lacave-elasticsearch-es-http-certs-public -o "jsonpath={.data['ca\.crt']}" -n elastic-system | base64 -d; echo
+        Elasticsearch details:
+            Version: 7.0+
+    Cliquer Save and Test
+
+On ajoute les dashboard suivant en allant dans le menu Dashboard -> Manage -> Import
+
+    Elasticsearch: ID: 8715
+
+### Graylog
+Graylog est aussi utilisé pour recueillir les journaux. On l'utilise pour les journaus applicatifs avec le module GELF.
+Le déploiement de Graylog se fait en 3 étapes.
+
+    Déployer un MongoDB
+    Déployer Elasticsearch avec ECK
+    Déployer Graylog
+
+On doit premièrement créer le Namespace pour Graylog
+
+    kubectl apply -f resources/journalisation/graylog/graylog-namespace.yaml
+
+On créé ensuite le certificat SSL
+
+    kubectl apply -f resources/journalisation/graylog/graylog-cert-manifest.yaml
+
+#### MongoDB
+On utilise Helm pour déployer MongoDB. Les paramètres à utiliser pour la charte sont dans le fichier resources/journalisation/mongodb/kube-mongodb-helm-values.yaml
+Pour le déployer
+
+    Installer le repository Helm:
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    Déployer la charte avec les paramètres de notre cluster:
+    helm install -f resources/journalisation/graylog/graylog-mongodb-helm-values.yaml lacave-graylog-mongodb bitnami/mongodb --namespace graylog-system
+        NAME: lacave-graylog-mongodb
+        LAST DEPLOYED: Thu Oct 22 08:52:10 2020
+        NAMESPACE: graylog-system
+        STATUS: deployed
+        REVISION: 1
+        TEST SUITE: None
+        NOTES:
+        ** Please be patient while the chart is being deployed **
+
+        MongoDB can be accessed via port 27017 on the following DNS name(s) from within your cluster:
+
+            lacave-graylog-mongodb.graylog-system.svc.cluster.lacave
+
+        To get the root password run:
+
+            export MONGODB_ROOT_PASSWORD=$(kubectl get secret --namespace graylog-system lacave-graylog-mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 --decode)
+
+        To get the password for "graylog" run:
+
+            export MONGODB_PASSWORD=$(kubectl get secret --namespace graylog-system lacave-graylog-mongodb -o jsonpath="{.data.mongodb-password}" | base64 --decode)
+
+        To connect to your database, create a MongoDB client container:
+
+            kubectl run --namespace graylog-system lacave-graylog-mongodb-client --rm --tty -i --restart='Never' --image docker.io/bitnami/mongodb:4.4.1-debian-10-r39 --command -- bash
+
+        Then, run the following command:
+            mongo admin --host "lacave-graylog-mongodb" --authenticationDatabase admin -u root -p $MONGODB_ROOT_PASSWORD
+
+        To connect to your database from outside the cluster execute the following commands:
+
+            kubectl port-forward --namespace graylog-system svc/lacave-graylog-mongodb 27017:27017 &
+            mongo --host 127.0.0.1 --authenticationDatabase admin -p $MONGODB_ROOT_PASSWORD
+
+#### Elasticsearch avec Helm
+Lancer la commande suivante pour installer Elasticsearch 6.7.2 avec la charte HELM stable.
+Cette charte est dépréciée. Elle sera remplacé par l'opérateur lorsque Graylog pourra supporter la version 6.8 d'Elasticsearch.
+    
+    helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-elasticsearch-helm-values.yaml lacave-graylog-elasticsearch stable/elasticsearch
+    This Helm chart is deprecated. Please use https://github.com/elastic/helm-charts/tree/master/elasticsearch instead.
+
+    ---
+
+    The elasticsearch cluster has been installed.
+
+    Elasticsearch can be accessed:
+
+    * Within your cluster, at the following DNS name at port 9200:
+
+        lacave-graylog-elasticsearch-client.graylog-system.svc
+
+    * From outside the cluster, run these commands in the same shell:
+
+        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app=elasticsearch,component=client,release=lacave-graylog-elasticsearch" -o jsonpath="{.items[0].metadata.name}")
+        echo "Visit http://127.0.0.1:9200 to use Elasticsearch"
+        kubectl port-forward --namespace graylog-system $POD_NAME 9200:9200    
+
+#### Elasticsearch avec l'opérateur
+Depuis la version 4.0 de Graylog, il est possible d'utiliser l'opérateur ECK pour créer le serveur elasticsearch de Graylog.
+On utilise l'opérateur Elasticsearch déployé dans la section précédente pour le déployer pour Graylog.
+
+    kubectl apply -f resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml
+
+Pour obtenir le mot de passe de l'utilisateur elastic:
+
+    kubectl get secret graylog-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n graylog-system | base64 -d; echo
+
+On doit ajouter ce mot de passe dans la section elasticsearch du fichier resources/journalisation/graylog/graylog-helm-values.yaml
+elasticsearch:
+
+    hosts: http://elastic:LeMotDePasse@graylog-elasticsearch-es-http:9200
+
+#### Graylog
+On utilise une charte helms avec u fichier de valeur pour créer le serveur Graylog:
+Déployer le serveur Graylog avec la charte:
+
+    helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
+        NAME: lacave-graylog
+        LAST DEPLOYED: Wed Oct 21 22:34:55 2020
+        NAMESPACE: graylog-system
+        STATUS: deployed
+        REVISION: 1
+        TEST SUITE: None
+        NOTES:
+        To connect to your Graylog server:
+
+        1. Get the application URL by running these commands:
+
+        Graylog Web Interface uses JavaScript to get detail of each node. The client JavaScript cannot communicate to node when service type is `ClusterIP`. 
+        If you want to access Graylog Web Interface, you need to enable Ingress.
+            NOTE: Port Forward does not work with web interface.
+
+        2. The Graylog root users
+
+        echo "User: admin"
+        echo "Password: $(kubectl get secret --namespace graylog-system lacave-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode)"
+
+        To send logs to graylog:
+
+        NOTE: If `graylog.input` is empty, you cannot send logs from other services. Please make sure the value is not empty.
+                See https://github.com/helm/charts/tree/master/stable/graylog#input for detail
+        1. TCP
+        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app.kubernetes.io/name=graylog,app.kubernetes.io/instance=lacave-graylog" -o jsonpath="{.items[0].metadata.name}")
+        Run the command
+        kubectl port-forward $POD_NAME 12222:12222
+        Then send logs to 127.0.0.1:12222
+        Run the command
+        kubectl port-forward $POD_NAME 5061:5061
+        Then send logs to 127.0.0.1:5061
+        2. UDP
+        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app.kubernetes.io/name=graylog,app.kubernetes.io/instance=lacave-graylog" -o jsonpath="{.items[0].metadata.name}")
+        Run the command
+        kubectl port-forward $POD_NAME 12231:12231
+        Then send logs to 127.0.0.1:12231
+
+Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
+Lancer la commande suivante pour modifier le configmap:
+
+    kubectl edit configmap lacave-graylog -n graylog-system
+
+Ou, en ligne de commande:
+
+    kubectl get configmap lacave-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http/http_external_uri = https/g' | kubectl replace -f -
+
+Redémarrer Graylog:
+
+    kubectl scale statefulset lacave-graylog --replicas 0 -n graylog-system
+    kubectl scale statefulset lacave-graylog --replicas 1 -n graylog-system
+
+
+
+Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
+
+Pour: http_external_uri = https://graylog.kube.lacave.info
+
+Arrêter les pods:
+
+    kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
+
+Une fois tous les pods supprimé, démarrer les nouveaus pods:
+
+    kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
+
+L'interface de GRaylog est disponible par l'URL https://graylog.kube.lacave.info
+Utiliser les informations de connexion selon les instruction donnée lors de l'installation de la charte:
+
+    echo "User: admin"
+    echo "Password: $(kubectl get secret --namespace graylog-system lacave-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode)"
+
+Créer les inputs suivants:
+
+    gelf-tcp: port 12222
+    gelf-udp: port 12231
+    beats: port 5061
+
+#### Mise à jour de Graylog
+Pour mettre à jour Graylog, modifier la section suivante du fichier resources/journalisation/graylog/graylog-helm-values.yaml
+
+    graylog:
+    image:
+        repository: graylog/graylog:4.0.0-beta.3-1
+
+Mettre à jour la charte avec la commande suivante:
+
+    helm upgrade --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
+Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
+Lancer la commande suivante pour modifier le configmap:
+
+    kubectl edit configmap lacave-graylog -n graylog-system
+
+Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
+Pour: http_external_uri = https://graylog.kube.lacave.info
+
+Arrêter les pods:
+
+    kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
+
+Une fois tous les pods supprimé, démarrer les nouveaus pods:
+
+    kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
+
+## Visibilité
+### Jaeger tracing
+On utilise l'opérateur Jaeger: https://www.jaegertracing.io/docs/1.20/operator/
+#### Opérateur
+Installer l'opérateur:
+
+    kubectl create namespace observability
+    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/crds/jaegertracing.io_jaegers_crd.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/service_account.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role_binding.yaml
+    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/operator.yaml
+
+Activer les rôles pour avoir une portée sur tout le cluster.
+
+    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role.yaml
+    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role_binding.yaml
+
+On peut vérifier que l'opérateur est bien fonctionnel.
+
+    kubectl get deployment -n observability
+    NAME              READY   UP-TO-DATE   AVAILABLE   AGE
+    jaeger-operator   1/1     1            1           117s
+
+#### Installation de Jaeger
+Voici les étapes:
+
+Créer un secret contenant l'identifiant et le mot de passe pour se connecter à Elasticsearch.
+
+    kubectl create secret generic jaeger-es-secret --from-literal=ES_PASSWORD=$(kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d) --from-literal=ES_USERNAME=elastic -n observability
+
+Copier le secret contenant le certificat de Elasticsearch dans le namespace observabitility
+
+    kubectl get secret kube-lacave-elasticsearch-es-http-certs-public --namespace=elastic-system -oyaml | grep -v '^\s*namespace:\s' | kubectl apply --namespace=observability -f -
+
+Installer Jaeger:
+
+    kubectl create -f resources/jaeger/lacave-jaeger-manifest.yaml
+
+Un ingress est créé automatiquement par le manifest.
+On peut accéder à la console web par l'URL https://jaeger.kube.lacave.info
+Sinon, on peut utiliser le port forward    
+
+    kubectl port-forward svc/lacave-jaeger-query -n observability 16686:16686
+
+L'URL est alors http://localhost:16686
+
+
+#### Ajout de la source de données dans Grafana
+On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Jaeger.
+
+    Se connecter à Grafana
+    Dans le menu de Configuration -> Datasource.
+    Cliquer Add Datasource
+    Choisir Jaeger
+    Entrer les informations suivantes:
+        Name: Jaeger
+        HTTP:
+            URL: http://lacave-jaeger-query.observability.svc:16686
+            Access: Server
+    Cliquer Save and Test
+
+## Weavescope 
+Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
+
+Pour instller Weavescope, utiliser la commande suivante:
+
+    kubectl apply -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+Pour accéder à l'interface:
+
+    kubectl port-forward svc/weave-scope-app 4040:80 -n weave
+
+L'URL est alors http://localhost:4040
+
+## Service Mesh: Istio
+Cette partie décrit comment déployer le Service Mesh Istio dans le cluster.
+
+### Pré-requis
+Pour une maximum de conrôle, on doit installer les composants suivants avant de déployer Istio.
+
+Restreindre l'exécution du ingress nginx pour pouvoir utiliser l'ingress de istio.
+On va ajouter un label ingress-type sur chacun des noeuds pour avoir le ingress nginx sur lube01 et kube02 et le ingress istio sur kube03 et kube04
+
+    kubectl label nodes kube01 kube02 ingress-type=nginx
+    kubectl label nodes kube03 kube04 ingress-type=istio
+
+Modifier le ingress nginx:
+
+    kubectl -n ingress-nginx edit daemonset ingress-nginx-controller
+
+Ajouter la condition ingress-type dans la partie nodeSelector comme suit et sauvegarder le fichier.
+
+      nodeSelector:
+        ingress-type: nginx
+        kubernetes.io/os: linux
+
+### Déploiement de Istio
+Istio est un ensemble de composant ajouté à Kubernetes pour la gestion de service mesh.
+On utilise istictl pour le déployer sur le cluster Kubernetes.
+Voici les instructions pour le déployer à partir du premier noeud maitre du cluster qlkub01t:
+
+    Installer istioctl sur le serveur de déploiement:
+        cd $HOME/bin
+        curl -L https://istio.io/downloadIstio | sh -
+        export PATH="$PATH:$HOME/bin/istio-1.6.1/bin"
+    Déployer le profil par défaut:
+        istioctl install --set profile=demo
+
+Une fois le déploiement terminé, on peut ajouter le nodeSelector dans le déploiement du ingress istio
+
+Modifier le deployment:
+
+    kubectl -n istio-system edit deployment istio-ingressgateway
+
+Ajouter la section suivante dans la partie spec.template.containers[0].affinity
+
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+              - key: ingress-type
+                operator: In
+                values:
+                - istio
+
+On peut ajouter une adresse IP au Istio Ingress Gateway.
+Modifier le gateway:
+
+    kubectl -n istio-system edit svc istio-ingressgateway
+
+Section spec, ajouter les lignes suivantes:
+
+    externalIPs:
+    - 192.168.1.25
+
+Choisir une adresse IP non utilisée car elle va être ajoutée au hosts qui roulent le gateway.
+
+Pour accéder aux diverses consoles, on peut installer istio sur notre poste. L'outil istioctl va utiliser la configuration par défaut du fichier ~/.kube/config.json pour se connnecter au cluster Kubernetes.
+On peut alors accéder aux consoles avec les commandes suivantes:
+
+    istioctl dashboard ConsoleAOuvrir.
+    
+Les consoles disponibles sont:
+
+    controlz    Open ControlZ web UI
+    envoy       Open Envoy admin web UI
+    grafana     Open Grafana web UI
+    jaeger      Open Jaeger web UI
+    kiali       Open Kiali web UI
+    prometheus  Open Prometheus web UI
+    zipkin      Open Zipkin web UI
 
 
 # Ajouter un noeud au cluster
@@ -1289,7 +1762,7 @@ Pour mettre à jour le cluster, lancer la commande suivante à partir du serveur
 
     ansible-playbook -i inventory/lacave/inventory.ini kubespray/upgrade-cluster.yml -e kube_version=v1.19.1
 
-## Supprimer un noeud
+# Supprimer un noeud
 Voici les étapes pour supprimer un noeud du cluster Kubernetes.
 Sur le serveur de gestion, se déplacer dans le projet kube-lacave.
 S'assurer que le clone/checkout/pull du sous projet kubespray a été fait.
@@ -1342,506 +1815,6 @@ Ajouter, committer et pousser la modificiation dans le dépôt git:
     git commit -m "Enlever le noeud kube04"
     git push
 
-# Monitoring
-La solution la plus populaire pour la surveillance d'un cluster Kubernetes est la combinaison Prometheus et Grafana.
-
-## Installation de Prometheus, Grafana et Node Exporter avec une charte helm
-On utilise la charte helm kube-prometheus pour déployer l'opérateur Prometheus.
-
-Ajouter le repository à votre installation de Helm
-
-    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm repo add stable https://charts.helm.sh/stable
-    helm repo update
-
-Créer le namespace monitoring
-
-    kubectl create namespace monitoring
-
-Installer la charte en utilisant les personnalisation de ce projet:
-
-    helm install -f resources/monitoring/kube-prometheus-helm-values.yaml lacave-prom prometheus-community/kube-prometheus-stack
-
-Grafana est accessible à l'adresse http://grafana.kube.lacave.info
-L'utilisateur est admin et le mot de passe se retrouve dans le fichier kube-prometheus-helm-values.yaml
-On ajoute les dashboard suivants en allant dans le menu Dashboard -> Manage -> Import
-
-    Ceph: ID: 7056
-
-
-### Service monitor
-Pour monitorer un composants, on doit crée une ressource ServiceMonitor qui décrit quel est le service de notre composant quyi expose les métriques pour Prometheus.
-
-Voir la page suivante pour une bonne explication de comment ca marche et comment on peut diagnostiquer les problèmes de récupération des métriques: https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/troubleshooting.md
-
-### Surveillance du cluster ceph
-Lors de l'installation du cluster ceph, le monitoring a été configuré par l'opérateur rook. Pour que Prometheus puisse les importer, on doit créer un service monitor:
-Lancer la commande suivante pour le créer:
-
-    kubectl apply -f resources/rook/mgr-service-monitor.yaml
-
-On peut ensuite importer un tableau de bord pour ceph dans Grafana. L'identifiant de celui que j'ai utilisé est le 7056:
-
-    https://grafana.com/grafana/dashboards/7056
-
-
-# Journalisation
-Cette section décrit les étapes pour déployer les services de journalisation
-
-## ECK
-
-Elastic Cloud on Kubernetes. https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html
-
-Installer les CRD et l'opérateur ainsi que ses règles d'accès.
-
-    kubectl apply -f https://download.elastic.co/downloads/eck/1.2.1/all-in-one.yaml
-On peut alors surveiller son déploiment
-
-    kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
-
-On peut alors créer des cluster Elasticsearch. Dans notre cas, on va en créer un pour recueillir les logs des pods.
-
-    kubectl apply -f resources/journalisation/elasticsearch/kube-lacave-elasticsearch-manifest.yaml
-
-Attendre que le serveur Elastic soit fonctionnel:
-
-    watch ubectl get elastic -n elastic-system
-    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
-    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   4m39s
-
-Installer Kibana
-
-    kubectl apply -f resources/journalisation/kibana/kube-lacave-kibana-manifest.yaml
-
-Attendre que le serveur Kibana soit disponible:
-
-    watch kubectl get elastic -n elastic-system
-    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
-    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   40m
-
-    NAME                                              HEALTH   NODES   VERSION   AGE
-    kibana.kibana.k8s.elastic.co/kube-lacave-kibana   green    1       7.9.3     34m
-
-Installer les beats pour recueillir les journaux des conteneurs.
-
-    kubectl apply -f resources/journalisation/beats/kube-lacave-beats-manifest.yaml
-
-Attendre que le beat soit disponbile:
-
-    watch kubectl get elastic -n elastic-system
-    NAME                                                                   HEALTH   NODES   VERSION   PHASE   AGE
-    elasticsearch.elasticsearch.k8s.elastic.co/kube-lacave-elasticsearch   green    1       7.9.3     Ready   44m
-
-    NAME                                              HEALTH   NODES   VERSION   AGE
-    kibana.kibana.k8s.elastic.co/kube-lacave-kibana   green    1       7.9.3     38m
-
-    NAME                                         HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
-    beat.beat.k8s.elastic.co/kube-lacave-beats   green    4           4          filebeat   7.9.3     116s
-
-Pour obtenir le mot de passe de l'utilisateur elastic:
-
-    kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
-
-L'URL de kibana est https://kibana.kube.lacave.info
-
-    S'authentifier en tant que elsastic avec le mot de passe trouvé à l'étape précédente.
-    Naviguer dans le menu dans le haut à gauche de l'écran: menu Observability -> Logs. Cette étape permet de voir si les journaux des beats sont envoyés sur Elasticsearch et visibles par Kibana.
-    Naviguer dans le menu Kibana -> Discover. On peut explorer les journaux et faire des requêtes pour les filtrer.
-
-
-Installer APM Server. Cette partie n'est pas fonctionnelle encore...
-
-    kubectl apply -f resources/journalisation/apm/kube-lacave-apm-manifest.yaml
-
-### Ajout de la source de données dans Grafana
-On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Elasticsearch.
-
-    Se connecter à Grafana
-    Dans le menu de Configuration -> Datasource.
-    Cliquer Add Datasource
-    Choisir Elasticsearch
-    Entrer les informations suivantes:
-        Name: Elasticsearch
-        HTTP:
-            URL: https://kube-lacave-elasticsearch-es-http.elastic-system.svc:9200
-            Access: Server
-        Auth: Cocher Basic auth et With CA Cert
-        Basic auth details:
-            User: elastic
-            Password: Lancer la commande suivante pour l'obtenir
-            kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d; echo
-        TLS Auth Details:
-            CA-cert: Lancer la commande suivante pour l'obtenir
-            kubectl get secret kube-lacave-elasticsearch-es-http-certs-public -o "jsonpath={.data['ca\.crt']}" -n elastic-system | base64 -d; echo
-        Elasticsearch details:
-            Version: 7.0+
-    Cliquer Save and Test
-
-On ajoute les dashboard suivant en allant dans le menu Dashboard -> Manage -> Import
-
-    Elasticsearch: ID: 8715
-
-## Graylog
-Graylog est aussi utilisé pour recueillir les journaux. On l'utilise pour les journaus applicatifs avec le module GELF.
-Le déploiement de Graylog se fait en 3 étapes.
-
-    Déployer un MongoDB
-    Déployer Elasticsearch avec ECK
-    Déployer Graylog
-
-On doit premièrement créer le Namespace pour Graylog
-
-    kubectl apply -f resources/journalisation/graylog/graylog-namespace.yaml
-
-On créé ensuite le certificat SSL
-
-    kubectl apply -f resources/journalisation/graylog/graylog-cert-manifest.yaml
-
-### MongoDB
-On utilise Helm pour déployer MongoDB. Les paramètres à utiliser pour la charte sont dans le fichier resources/journalisation/mongodb/kube-mongodb-helm-values.yaml
-Pour le déployer
-
-    Installer le repository Helm:
-    helm repo add bitnami https://charts.bitnami.com/bitnami
-    Déployer la charte avec les paramètres de notre cluster:
-    helm install -f resources/journalisation/graylog/graylog-mongodb-helm-values.yaml lacave-graylog-mongodb bitnami/mongodb --namespace graylog-system
-        NAME: lacave-graylog-mongodb
-        LAST DEPLOYED: Thu Oct 22 08:52:10 2020
-        NAMESPACE: graylog-system
-        STATUS: deployed
-        REVISION: 1
-        TEST SUITE: None
-        NOTES:
-        ** Please be patient while the chart is being deployed **
-
-        MongoDB can be accessed via port 27017 on the following DNS name(s) from within your cluster:
-
-            lacave-graylog-mongodb.graylog-system.svc.cluster.lacave
-
-        To get the root password run:
-
-            export MONGODB_ROOT_PASSWORD=$(kubectl get secret --namespace graylog-system lacave-graylog-mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 --decode)
-
-        To get the password for "graylog" run:
-
-            export MONGODB_PASSWORD=$(kubectl get secret --namespace graylog-system lacave-graylog-mongodb -o jsonpath="{.data.mongodb-password}" | base64 --decode)
-
-        To connect to your database, create a MongoDB client container:
-
-            kubectl run --namespace graylog-system lacave-graylog-mongodb-client --rm --tty -i --restart='Never' --image docker.io/bitnami/mongodb:4.4.1-debian-10-r39 --command -- bash
-
-        Then, run the following command:
-            mongo admin --host "lacave-graylog-mongodb" --authenticationDatabase admin -u root -p $MONGODB_ROOT_PASSWORD
-
-        To connect to your database from outside the cluster execute the following commands:
-
-            kubectl port-forward --namespace graylog-system svc/lacave-graylog-mongodb 27017:27017 &
-            mongo --host 127.0.0.1 --authenticationDatabase admin -p $MONGODB_ROOT_PASSWORD
-
-### Elasticsearch avec Helm
-Lancer la commande suivante pour installer Elasticsearch 6.7.2 avec la charte HELM stable.
-Cette charte est dépréciée. Elle sera remplacé par l'opérateur lorsque Graylog pourra supporter la version 6.8 d'Elasticsearch.
-    
-    helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-elasticsearch-helm-values.yaml lacave-graylog-elasticsearch stable/elasticsearch
-    This Helm chart is deprecated. Please use https://github.com/elastic/helm-charts/tree/master/elasticsearch instead.
-
-    ---
-
-    The elasticsearch cluster has been installed.
-
-    Elasticsearch can be accessed:
-
-    * Within your cluster, at the following DNS name at port 9200:
-
-        lacave-graylog-elasticsearch-client.graylog-system.svc
-
-    * From outside the cluster, run these commands in the same shell:
-
-        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app=elasticsearch,component=client,release=lacave-graylog-elasticsearch" -o jsonpath="{.items[0].metadata.name}")
-        echo "Visit http://127.0.0.1:9200 to use Elasticsearch"
-        kubectl port-forward --namespace graylog-system $POD_NAME 9200:9200    
-
-### Elasticsearch avec l'opérateur
-Ne pas utiliser l'opérateur pour le moment car il ne peut pas installer un version supportés par Graylog pour le moment
-On utilise l'opérateur Elasticsearch déployé dans la section précédente pour le déployer pour Graylog.
-
-    kubectl apply -f resources/journalisation/graylog/graylog-elasticsearch-manifest.yaml
-
-Pour obtenir le mot de passe de l'utilisateur elastic:
-
-    kubectl get secret graylog-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n graylog-system | base64 -d; echo
-
-On doit ajouter ce mot de passe dans la section elasticsearch du fichier resources/journalisation/graylog/graylog-helm-values.yaml
-elasticsearch:
-
-    hosts: http://elastic:LeMotDePasse@graylog-elasticsearch-es-http:9200
-
-### Graylog
-On utilise une charte helms avec u fichier de valeur pour créer le serveur Graylog:
-Déployer le serveur Graylog avec la charte:
-
-    helm install --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
-        NAME: lacave-graylog
-        LAST DEPLOYED: Wed Oct 21 22:34:55 2020
-        NAMESPACE: graylog-system
-        STATUS: deployed
-        REVISION: 1
-        TEST SUITE: None
-        NOTES:
-        To connect to your Graylog server:
-
-        1. Get the application URL by running these commands:
-
-        Graylog Web Interface uses JavaScript to get detail of each node. The client JavaScript cannot communicate to node when service type is `ClusterIP`. 
-        If you want to access Graylog Web Interface, you need to enable Ingress.
-            NOTE: Port Forward does not work with web interface.
-
-        2. The Graylog root users
-
-        echo "User: admin"
-        echo "Password: $(kubectl get secret --namespace graylog-system lacave-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode)"
-
-        To send logs to graylog:
-
-        NOTE: If `graylog.input` is empty, you cannot send logs from other services. Please make sure the value is not empty.
-                See https://github.com/helm/charts/tree/master/stable/graylog#input for detail
-        1. TCP
-        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app.kubernetes.io/name=graylog,app.kubernetes.io/instance=lacave-graylog" -o jsonpath="{.items[0].metadata.name}")
-        Run the command
-        kubectl port-forward $POD_NAME 12222:12222
-        Then send logs to 127.0.0.1:12222
-        Run the command
-        kubectl port-forward $POD_NAME 5061:5061
-        Then send logs to 127.0.0.1:5061
-        2. UDP
-        export POD_NAME=$(kubectl get pods --namespace graylog-system -l "app.kubernetes.io/name=graylog,app.kubernetes.io/instance=lacave-graylog" -o jsonpath="{.items[0].metadata.name}")
-        Run the command
-        kubectl port-forward $POD_NAME 12231:12231
-        Then send logs to 127.0.0.1:12231
-
-Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
-Lancer la commande suivante pour modifier le configmap:
-
-    kubectl edit configmap lacave-graylog -n graylog-system
-
-Ou, en ligne de commande:
-
-    kubectl get configmap lacave-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http/http_external_uri = https/g' | kubectl replace -f -
-
-Redémarrer Graylog:
-
-    kubectl scale statefulset lacave-graylog --replicas 0 -n graylog-system
-    kubectl scale statefulset lacave-graylog --replicas 1 -n graylog-system
-
-
-
-Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
-
-Pour: http_external_uri = https://graylog.kube.lacave.info
-
-Arrêter les pods:
-
-    kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
-
-Une fois tous les pods supprimé, démarrer les nouveaus pods:
-
-    kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
-
-L'interface de GRaylog est disponible par l'URL https://graylog.kube.lacave.info
-Utiliser les informations de connexion selon les instruction donnée lors de l'installation de la charte:
-
-    echo "User: admin"
-    echo "Password: $(kubectl get secret --namespace graylog-system lacave-graylog -o "jsonpath={.data['graylog-password-secret']}" | base64 --decode)"
-
-Créer les inputs suivants:
-
-    gelf-tcp: port 12222
-    gelf-udp: port 12231
-    beats: port 5061
-
-### Mise à jour de Graylog
-Pour mettre à jour Graylog, modifier la section suivante du fichier resources/journalisation/graylog/graylog-helm-values.yaml
-
-    graylog:
-    image:
-        repository: graylog/graylog:4.0.0-beta.3-1
-
-Mettre à jour la charte avec la commande suivante:
-
-    helm upgrade --namespace graylog-system -f resources/journalisation/graylog/graylog-helm-values.yaml lacave-graylog stable/graylog
-Une fois graylog en route, pour pouvoir accéder à l'interface web en https, on doit modifier le configmap et redémarrer les pods.
-Lancer la commande suivante pour modifier le configmap:
-
-    kubectl edit configmap lacave-graylog -n graylog-system
-
-Modifier la valeur suivante: http_external_uri = http://graylog.kube.lacave.info
-Pour: http_external_uri = https://graylog.kube.lacave.info
-
-Arrêter les pods:
-
-    kubectl scale Statefulset lacave-graylog --replicas 0 -n graylog-system
-
-Une fois tous les pods supprimé, démarrer les nouveaus pods:
-
-    kubectl scale Statefulset lacave-graylog --replicas 2 -n graylog-system
-
-# Visibilité
-## Jaeger tracing
-On utilise l'opérateur Jaeger: https://www.jaegertracing.io/docs/1.20/operator/
-### Opérateur
-Installer l'opérateur:
-
-    kubectl create namespace observability
-    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/crds/jaegertracing.io_jaegers_crd.yaml
-    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/service_account.yaml
-    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role.yaml
-    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role_binding.yaml
-    kubectl create -n observability -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/operator.yaml
-
-Activer les rôles pour avoir une portée sur tout le cluster.
-
-    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role.yaml
-    kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/cluster_role_binding.yaml
-
-On peut vérifier que l'opérateur est bien fonctionnel.
-
-    kubectl get deployment -n observability
-    NAME              READY   UP-TO-DATE   AVAILABLE   AGE
-    jaeger-operator   1/1     1            1           117s
-
-### Installation de Jaeger
-Voici les étapes:
-
-Créer un secret contenant l'identifiant et le mot de passe pour se connecter à Elasticsearch.
-
-    kubectl create secret generic jaeger-es-secret --from-literal=ES_PASSWORD=$(kubectl get secret kube-lacave-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d) --from-literal=ES_USERNAME=elastic -n observability
-
-Copier le secret contenant le certificat de Elasticsearch dans le namespace observabitility
-
-    kubectl get secret kube-lacave-elasticsearch-es-http-certs-public --namespace=elastic-system -oyaml | grep -v '^\s*namespace:\s' | kubectl apply --namespace=observability -f -
-
-Installer Jaeger:
-
-    kubectl create -f resources/jaeger/lacave-jaeger-manifest.yaml
-
-Un ingress est créé automatiquement par le manifest.
-On peut accéder à la console web par l'URL https://jaeger.kube.lacave.info
-Sinon, on peut utiliser le port forward    
-
-    kubectl port-forward svc/lacave-jaeger-query -n observability 16686:16686
-
-L'URL est alors http://localhost:16686
-
-
-### Ajout de la source de données dans Grafana
-On peut utiliser grafana pour faire des tableaux de bords pour exploiter les données recueillis par Jaeger.
-
-    Se connecter à Grafana
-    Dans le menu de Configuration -> Datasource.
-    Cliquer Add Datasource
-    Choisir Jaeger
-    Entrer les informations suivantes:
-        Name: Jaeger
-        HTTP:
-            URL: http://lacave-jaeger-query.observability.svc:16686
-            Access: Server
-    Cliquer Save and Test
-
-## Weavescope 
-Il n'est pas facile de bien voir l'interaction entre les différents pod d'un cluster Kubernets. On peut utiliser Wavescope pour créer un interface qui permet de représenter graphiquement ces inter-connexions.
-
-Pour instller Weavescope, utiliser la commande suivante:
-
-    kubectl apply -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')"
-
-Pour accéder à l'interface:
-
-    kubectl port-forward svc/weave-scope-app 4040:80 -n weave
-
-L'URL est alors http://localhost:4040
-
-# Service Mesh: Istio
-Cette partie décrit comment déployer le Service Mesh Istio dans le cluster.
-
-## Pré-requis
-Pour une maximum de conrôle, on doit installer les composants suivants avant de déployer Istio.
-
-Restreindre l'exécution du ingress nginx pour pouvoir utiliser l'ingress de istio.
-On va ajouter un label ingress-type sur chacun des noeuds pour avoir le ingress nginx sur lube01 et kube02 et le ingress istio sur kube03 et kube04
-
-    kubectl label nodes kube01 kube02 ingress-type=nginx
-    kubectl label nodes kube03 kube04 ingress-type=istio
-
-Modifier le ingress nginx:
-
-    kubectl -n ingress-nginx edit daemonset ingress-nginx-controller
-
-Ajouter la condition ingress-type dans la partie nodeSelector comme suit et sauvegarder le fichier.
-
-      nodeSelector:
-        ingress-type: nginx
-        kubernetes.io/os: linux
-
-## Déploiement de Istio
-Istio est un ensemble de composant ajouté à Kubernetes pour la gestion de service mesh.
-On utilise istictl pour le déployer sur le cluster Kubernetes.
-Voici les instructions pour le déployer à partir du premier noeud maitre du cluster qlkub01t:
-
-    Installer istioctl sur le serveur de déploiement:
-        cd $HOME/bin
-        curl -L https://istio.io/downloadIstio | sh -
-        export PATH="$PATH:$HOME/bin/istio-1.6.1/bin"
-    Déployer le profil par défaut:
-        istioctl install --set profile=demo
-
-Une fois le déploiement terminé, on peut ajouter le nodeSelector dans le déploiement du ingress istio
-
-Modifier le deployment:
-
-    kubectl -n istio-system edit deployment istio-ingressgateway
-
-Ajouter la section suivante dans la partie spec.template.containers[0].affinity
-
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: beta.kubernetes.io/arch
-                operator: In
-                values:
-                - amd64
-                - ppc64le
-                - s390x
-              - key: ingress-type
-                operator: In
-                values:
-                - istio
-
-On peut ajouter une adresse IP au Istio Ingress Gateway.
-Modifier le gateway:
-
-    kubectl -n istio-system edit svc istio-ingressgateway
-
-Section spec, ajouter les lignes suivantes:
-
-    externalIPs:
-    - 192.168.1.25
-
-Choisir une adresse IP non utilisée car elle va être ajoutée au hosts qui roulent le gateway.
-
-Pour accéder aux diverses consoles, on peut installer istio sur notre poste. L'outil istioctl va utiliser la configuration par défaut du fichier ~/.kube/config.json pour se connnecter au cluster Kubernetes.
-On peut alors accéder aux consoles avec les commandes suivantes:
-
-    istioctl dashboard ConsoleAOuvrir.
-    
-Les consoles disponibles sont:
-
-    controlz    Open ControlZ web UI
-    envoy       Open Envoy admin web UI
-    grafana     Open Grafana web UI
-    jaeger      Open Jaeger web UI
-    kiali       Open Kiali web UI
-    prometheus  Open Prometheus web UI
-    zipkin      Open Zipkin web UI
 
 
 # Troubleshooting Kubernetes
