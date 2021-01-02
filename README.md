@@ -1389,7 +1389,7 @@ Lancer la commande suivante pour modifier le configmap:
 
 Ou, en ligne de commande:
 
-    kubectl get configmap lacave-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http/http_external_uri = https/g' | kubectl replace -f -
+    kubectl get configmap lacave-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http:/http_external_uri = https:/g' | kubectl replace -f -
 
 Redémarrer Graylog:
 

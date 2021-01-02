@@ -85,7 +85,7 @@
 - name: Modifier le configmap pour https
   shell:
     cmd: |
-      kubectl get configmap {{ project_name }}-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http/http_external_uri = https/g' | kubectl replace -f -
+      kubectl get configmap {{ project_name }}-graylog -n graylog-system -o yaml | sed 's/http_external_uri = http:/http_external_uri = https:/g' | kubectl replace -f -
 - name: Arrêter Graylog
   shell:
     cmd: |
