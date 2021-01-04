@@ -1,8 +1,6 @@
 ---
 login_keycloak_image: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
 login_keycloak_image_version: "{{ login_keycloak_version | default('11.0.3') }}"
-login_keycloak_user: "{{ login_keycloak_admin_username | default('admin') }}"
-login_keycloak_password: "{{ login_keycloak_admin_password | default('admin') }}"
 login_keycloak_external_port: 18081
 login_keycloak_protocol: https
 login_keycloak_url: "{{ login_keycloak_protocol }}://{{ login_keycloak_base_url }}"
@@ -10,8 +8,6 @@ login_keycloak_auth_client_id: admin-cli
 login_keycloak_auth_client_secret:
 login_keycloak_auth_realm: master
 login_keycloak_ha_config: standalone-ha-login.xml
-login_keycloak_db_username: "{{ login_keycloak_db_username | default('admin') }}"
-login_keycloak_db_password: "{{ login_keycloak_db_password | default('admin') }}"
 login_keycloak_db_addr: "login{{ project_name }}cluster"
 login_keycloak_db_port: 5432
 login_keycloak_db_database: keycloak
