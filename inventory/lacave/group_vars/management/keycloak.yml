@@ -1,28 +1,39 @@
 ---
-keycloak_image: "{{ login_keycloak_image | default('jboss/keycloak') }}"
-keycloak_image_version: "{{ login_keycloak_version | default('11.0.3') }}"
-keycloak_user: "{{ login_keycloak_admin_username | default('admin') }}"
-keycloak_password: "{{ login_keycloak_admin_password | default('admin') }}"
-keycloak_external_port: 18081
-keycloak_base_url: "{{ login_keycloak_url }}"
-keycloak_protocol: https
-keycloak_url: "{{ keycloak_protocol }}://{{ keycloak_base_url }}"
-keycloak_auth_client_id: admin-cli
-keycloak_auth_client_secret:
-keycloak_auth_realm: master
-keycloak_ha_config: standalone-ha-login.xml
+login_keycloak_image: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
+login_keycloak_image_version: "{{ login_keycloak_version | default('11.0.3') }}"
+login_keycloak_user: "{{ login_keycloak_admin_username | default('admin') }}"
+login_keycloak_password: "{{ login_keycloak_admin_password | default('admin') }}"
+login_keycloak_external_port: 18081
+login_keycloak_protocol: https
+login_keycloak_url: "{{ login_keycloak_protocol }}://{{ login_keycloak_base_url }}"
+login_keycloak_auth_client_id: admin-cli
+login_keycloak_auth_client_secret:
+login_keycloak_auth_realm: master
+login_keycloak_ha_config: standalone-ha-login.xml
+login_keycloak_db_username: "{{ login_keycloak_db_username | default('admin') }}"
+login_keycloak_db_password: "{{ login_keycloak_db_password | default('admin') }}"
+login_keycloak_db_addr: "login{{ project_name }}cluster"
+login_keycloak_db_port: 5432
+login_keycloak_db_database: keycloak
+login_keycloak_db_schema: keycloak
+login_keycloak_db_driver: postgresql
+login_keycloak_db_vendor: postgres
+login_keycloak_db_url: "jdbc:{{ login_keycloak_db_driver }}://{{ login_keycloak_db_addr }}:{{ login_keycloak_db_port }}/{{ login_keycloak_db_database }}"
+login_keycloak_graylog_host: "{{ project_name }}-graylog.graylog-system.svc"
+login_keycloak_graylog_gelf_udp: "{{ graylog_gelf_udp_port | default(12231) }}"
+login_keycloak_proxy_address_forwarding: "true"
 kubernetes_realm: kubernetes
 smtp_server: "smtp.{{ global_domain_name }}"
 
 #Information sur les REALM
-keycloak_realms: 
+login_keycloak_realms: 
   - realm: "{{ kubernetes_realm }}"
     name: Kubernetes
     namehtml: "Kubernetes"
-    loginTheme: "{{ keycloak_default_theme | default('keycloak') }}"
-    adminTheme: "{{ keycloak_default_theme | default('keycloak') }}"
-    emailTheme: "{{ keycloak_default_theme | default('keycloak') }}"
-    accountTheme: "{{ keycloak_default_theme | default('keycloak') }}"
+    loginTheme: "{{ login_keycloak_default_theme | default('keycloak') }}"
+    adminTheme: "{{ login_keycloak_default_theme | default('keycloak') }}"
+    emailTheme: "{{ login_keycloak_default_theme | default('keycloak') }}"
+    accountTheme: "{{ login_keycloak_default_theme | default('keycloak') }}"
     bruteForceProtected: true
     loginWithEmailAllowed: false
     duplicateEmailsAllowed: true
@@ -53,137 +64,67 @@ keycloak_realms:
       eventsExpiration: 172800
       adminEventsDetailsEnabled: true
 
-keycloak_idps:
-  - alias: google
-    realm: "{{ sp_realm }}"
-    displayName: "Connexion avec Google"
-    providerId: oidc
-    firstBrokerLoginFlowAlias: "Test first broker login"
-    postBrokerLoginFlowAlias: "Test post broker login"
-    config:
-      openIdConfigurationUrl: "{{ idp_openid_config_url }}"
-      clientId: "{{ idp_clientId }}"
-      clientSecret: "{{ idp_clientSecret }}"
-      disableUserInfo: True
-      defaultScope: "openid email profile"
-      guiOrder: "1"
-      backchannelSupported: True
-    mappers:
-      - name: GivenNameMapper
-        config:
-          claim: given_name
-          user.attribute: firstName
-      - name: FamilyNameMapper
-        config:
-          claim: family_name
-          user.attribute: lastName
-      - name: UsernameMapper
-        identityProviderMapper: oidc-username-idp-mapper
-        config:
-          template: "${CLAIM.upn}"
+login_keycloak_idps: []
+#  - alias: google
+#    realm: "{{ kubernetes_realm }}"
+#    displayName: "Connexion avec Google"
+#    providerId: oidc
+#    firstBrokerLoginFlowAlias: "Test first broker login"
+#    postBrokerLoginFlowAlias: "Test post broker login"
+#    config:
+#      openIdConfigurationUrl: "{{ idp_openid_config_url }}"
+#      clientId: "{{ idp_clientId }}"
+#      clientSecret: "{{ idp_clientSecret }}"
+#      disableUserInfo: True
+#      defaultScope: "openid email profile"
+#      guiOrder: "1"
+#      backchannelSupported: True
+#    mappers:
+#      - name: GivenNameMapper
+#        config:
+#          claim: given_name
+#          user.attribute: firstName
+#      - name: FamilyNameMapper
+#        config:
+#          claim: family_name
+#          user.attribute: lastName
+#      - name: UsernameMapper
+#        identityProviderMapper: oidc-username-idp-mapper
+#        config:
+#          template: "${CLAIM.upn}"
 
-keycloak_roles:
-  - name: sx5-admin
-    realm: "{{ sp_realm }}"
-    description: "Administrateurs"
-    composite: true
-    composites:
-      - clientId: realm-management
-        name: manage-clients
-      - clientId: realm-management
-        name: manage-users
-  - name: client-federation
-    realm: "{{ sp_realm }}"
-    description: "Role de confiduration des clients de la fédération"
-    composite: true
-    composites:
-      - clientId: realm-management
-        name: realm-admin
-  - name: BIOCH
-    realm: "{{ sp_realm }}"
-    description: "Biochimiste"
-  - name: DEN
-    realm: "{{ sp_realm }}"
-    description: "Dentiste"
-  - name: EXTMD
-    realm: "{{ sp_realm }}"
-    description: "Externe en médecine"
-  - name: MD
-    realm: "{{ sp_realm }}"
-    description: "Médecin"
-  - name: NPROF
-    realm: "{{ sp_realm }}"
-    description: "Non-professionnel"
-  - name: OPT
-    realm: "{{ sp_realm }}"
-    description: "Optométriste"
-  - name: PHARM
-    realm: "{{ sp_realm }}"
-    description: "Pharmacien"
-  - name: PO
-    realm: "{{ sp_realm }}"
-    description: "Podiatre"
-  - name: RES
-    realm: "{{ sp_realm }}"
-    description: "Résident en médecine"
-  - name: RM
-    realm: "{{ sp_realm }}"
-    description: "Sage-femme"
-  - name: CARM
-    realm: "{{ sp_realm }}"
-    description: "Candidate sage-femme"
-  - name: RN
-    realm: "{{ sp_realm }}"
-    description: "Infirmier – infirmière régulière ou praticienne spécialisée"
-  - name: LPN
-    realm: "{{ sp_realm }}"
-    description: "Infirmier – infirmière auxiliaire"
-  - name: RTR
-    realm: "{{ sp_realm }}"
-    description: "Technologue en imagerie médicale et en radio-oncologie"
-  - name: RRT
-    realm: "{{ sp_realm }}"
-    description: "Inhalothérapeute"
-        
-keycloak_idps_clients:
-  - clientId: sp
-    name: Service Provider
-    auth_keycloak_url: "{{ idp_keycloak_url }}"
-    auth_keycloak_user: "{{ keycloak_user }}"
-    auth_keycloak_password: "{{ keycloak_password }}"
-    realm: "{{ idp_realm }}"
-    rootUrl: "{{ keycloak_url }}/auth"
-    idp_realm: "{{ sp_realm }}"
-    idp_alias: IDP
-    publicClient: false
-    description: Fédération d'identité
-    redirectUris:
-      - "{{ keycloak_url }}/auth/realms/{{ sp_realm }}/broker/SantePublique/endpoint*"
+login_keycloak_roles:
+  - name: cluster-admin
+    realm: "{{ kubernetes_realm }}"
+    description: "Administrateurs cluster Kubernetes"
+    composite: false
 
-keycloak_users:
-  - auth_keycloak_url: "{{ keycloak_url }}"
-    auth_keycloak_user: "{{ keycloak_user }}"
-    auth_keycloak_password: "{{ keycloak_password }}"
-    realm: "{{ sp_realm }}"
-    username: admin1
+login_keycloak_users:
+  - auth_keycloak_url: "{{ login_keycloak_url }}"
+    auth_keycloak_user: "{{ login_keycloak_user }}"
+    auth_keycloak_password: "{{ login_keycloak_password }}"
+    realm: "{{ kubernetes_realm }}"
+    username: admin
     firstName: Admin
-    lastName: Un
-    email: "nobody@inspq.qc.ca"
+    lastName: Kubernetes
+    email: "nobody@{{ kube_domain_name }}"
     enabled: true
     emailVerified: false
     credentials:
       - type: password
-        value: ASDASDASD
+        value: "{{ login_keycloak_admin_password }}"
         temporary: false
     realmRoles:
-      - client-federation
+      - cluster-admin
     state: present
 
-keycloak_clients:
+login_keycloak_clients:
   - clientId: account
-    auth_keycloak_url: "{{ keycloak_url }}"
-    auth_keycloak_user: "{{ keycloak_user }}"
-    auth_keycloak_password: "{{keycloak_password}}"
-    realm: "{{ sp_realm }}"
+    auth_keycloak_url: "{{ login_keycloak_url }}"
+    auth_keycloak_user: "{{ login_keycloak_user }}"
+    auth_keycloak_password: "{{login_keycloak_password}}"
+    realm: "{{ kubernetes_realm }}"
     defaultRoles:
-      - view-profile
+      - cluster-admin
+
+login_keycloak_client_scopes: []

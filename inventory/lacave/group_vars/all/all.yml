@@ -164,7 +164,7 @@ login_keycloak_db_password: !vault |
 login_keycloak_image: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
 login_lacave_keycloak_base_image: quay.io/keycloak/keycloak
 login_keycloak_version: 11.0.3
-login_keycloak_url: login.{{ kube_domain_name }}
+login_keycloak_base_url: login.{{ kube_domain_name }}
 login_keycloak_admin_username: !vault |
           $ANSIBLE_VAULT;1.2;AES256;lacave
           64323562376633326135386665636633633639323535353061623934373966343132613137356130

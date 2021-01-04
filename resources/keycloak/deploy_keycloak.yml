@@ -20,7 +20,7 @@
 - name: Créer le cluster
   command:
     cmd: |
-      pgo create cluster login{{ project_name }}cluster --namespace keycloak-system --database keycloak --username {{ login_keycloak_db_username }} --password {{ login_keycloak_db_password }} --pvc-size {{ login_keycloak_db_pvc_size | default('10Gi') }} --storage-config rook --pgbackrest-storage-config rook --replica-count {{ login_keycloak_db_replica_count | default ('2') }} --replica-storage-config rook --metrics
+      pgo create cluster {{ login_keycloak_db_addr }} --namespace keycloak-system --database {{ login_keycloak_db_database | default('keycloak') }} --username {{ login_keycloak_db_username }} --password {{ login_keycloak_db_password }} --pvc-size {{ login_keycloak_db_pvc_size | default('10Gi') }} --storage-config rook --pgbackrest-storage-config rook --replica-count {{ login_keycloak_db_replica_count | default ('2') }} --replica-storage-config rook --metrics
   environment: "{{ pgo_client_env }}"
   when: keycloak_db_cluster_status.stdout == "No clusters found."
 - name: Arrêter le service port forward pour PGO API Server
@@ -31,17 +31,20 @@
   file:
     dest: /tmp/keycloak/image
     state: directory
+  when: login_keycloak_image is defined
 - name: Copier les fichers pour l'image dans le répertoire temporaire
   copy:
     dest: /tmp/keycloak/image
     src: resources/keycloak/image/
+  when: login_keycloak_image is defined
 - name: Copier les certificats à insérer dans l'image.
   copy:
     src: "{{ self_signed_pki_path }}/ca/root-ca.crt"
     dest: /tmp/keycloak/image/selfsigned-root-ca.crt
+  when: login_keycloak_image is defined
 - name: Créer l'image de base Keycloak
   docker_image:
-    name: "{{ kube_registry_url }}/{{ project_name }}/keycloak"
+    name: "{{ login_keycloak_image }}"
     tag: "{{ login_keycloak_version | default('11.0.3)') }}"
     source: build
     build:
@@ -56,16 +59,50 @@
     force_tag: yes
     push: yes
   run_once: true
+  when: login_keycloak_image is defined
 - name: Supprimer le répertoire temporaire utilisé pour créer l'image de base
   file:
     dest: /tmp/keycloak
     state: absent
-- name: Générer le manifest dans les artefacts
-  local_action:
-    module: template
-    src: resources/keycloak/login-keycloak-manifest.yaml.j2
-    dest: "{{ manifest_dir }}/login-keycloak-manifest.yaml"
+  when: login_keycloak_image is defined
 - name: Installer Keycloak
-  k8s:                                                                                                                                                                                                             
+  include_role:                                                                                                                                                                                                             
+    name: keycloak
+    vars:
+      keycloak_image: "{{ login_keycloak_image | default('jboss/keycloak') }}"
+      keycloak_image_version: "{{ login_keycloak_version | default('11.0.3') }}"
+      keycloak_user: "{{ login_keycloak_admin_username | default('admin') }}"
+      keycloak_password: "{{ login_keycloak_admin_password | default('admin') }}"
+      keycloak_external_port: "{{ login_keycloak_external_port | default(18081) }}"
+      keycloak_base_url: "{{ login_keycloak_base_url }}"
+      keycloak_protocol: "{{ login_keycloak_protocol }}"
+      keycloak_url: "{{ login_keycloak_url }}"
+      keycloak_auth_client_id: "{{ login_keycloak_auth_client_id | default('admin-cli') }}"
+      keycloak_auth_client_secret: "{{ login_keycloak_auth_client_secret | default(omit) }}"
+      keycloak_auth_realm: "{{ login_keycloak_auth_realm | default('master') }}"
+      keycloak_ha_config: "{{ login_keycloak_ha_config | default(omit) }}"
+      keycloak_config: "{{ login_keycloak_config | default(omit) }}"
+      keycloak_db_username: "{{ login_keycloak_db_username | default('admin') }}"
+      keycloak_db_password: "{{ login_keycloak_db_password | default('admin') }}"
+      keycloak_db_addr: "{{ login_keycloak_db_addr }}"
+      keycloak_db_port: "{{ login_keycloak_db_port | default('5432') }}"
+      keycloak_db_database: "{{ login_keycloak_db_database | default('keycloak') }}"
+      keycloak_db_schema: "{{ login_keycloak_db_schema | default('keycloak') }}"
+      keycloak_db_driver: "{{ login_keycloak_db_driver | default('postgresql') }}"
+      keycloak_db_vendor: "{{ login_keycloak_db_vendor | default('postgres') }}"
+      keycloak_db_url: "{{ login_keycloak_db_url | default(omit) }}"
+      keycloak_graylog_host: "{{ login_keycloak_graylog_host | default(omit) }}"
+      keycloak_graylog_gelf_udp: "{{ login_keycloak_graylog_gelf_udp | default('12231') }}"
+      keycloak_proxy_address_forwarding: "{{login_keycloak_proxy_address_forwarding | default('true') }}"
+      keycloak_realms: "{{ login_keycloak_realms | default(omit) }}"
+      keycloak_idps: "{{ login_keycloak_idps | default(omit) }}"
+      keycloak_roles: "{{ login_keycloak_roles | default(omit) }}"
+      keycloak_idps_clients: "{{ login_keycloak_idps_clients | default(omit) }}"
+      keycloak_users: "{{ login_keycloak_users | defult(omit) }}"
+      keycloak_clients: "{{ login_keycloak_clients | default(omit) }}"
+      keycloak_client_scopes: "{{ login_keycloak_client_scopes | default(omit) }}"
+- name: Créer le role binding
+  k8s:
+    definition: "{{ lookup('file','resources/keycloak/oidc-cluster-admin-role-binding.yaml') }}"
     state: present
-    definition: "{{ lookup('template','resources/keycloak/login-keycloak-manifest.yaml.j2') }}"
+
