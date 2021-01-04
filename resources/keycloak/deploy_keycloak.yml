@@ -71,6 +71,7 @@
   vars:
     keycloak_image: "{{ login_keycloak_image | default('jboss/keycloak') }}"
     keycloak_image_version: "{{ login_keycloak_version | default('11.0.3') }}"
+    keycloak_container_type: kubernetes
     keycloak_user: "{{ login_keycloak_admin_username | default('admin') }}"
     keycloak_password: "{{ login_keycloak_admin_password | default('admin') }}"
     keycloak_external_port: "{{ login_keycloak_external_port | default(18081) }}"
