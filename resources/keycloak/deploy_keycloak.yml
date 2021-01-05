@@ -98,7 +98,7 @@
     keycloak_realms: "{{ login_keycloak_realms | default(omit) }}"
     keycloak_idps: "{{ login_keycloak_idps | default(omit) }}"
     keycloak_roles: "{{ login_keycloak_roles | default(omit) }}"
-    keycloak_idps_clients: "{{ login_keycloak_idps_clients | default(omit) }}"
+    keycloak_idps_clients: "{{ login_keycloak_idps_clients | default([]) }}"
     keycloak_users: "{{ login_keycloak_users | defult(omit) }}"
     keycloak_clients: "{{ login_keycloak_clients | default(omit) }}"
     keycloak_client_scopes: "{{ login_keycloak_client_scopes | default(omit) }}"
