@@ -1988,6 +1988,18 @@ On peut surveiller l'état du clueter avec la commande suivante:
 Lorsque la tâche de réparation se termin, l'état du clueter devrait être:
 
     HEALTH_OK
+
+### Changer le mot de passe de l'admin du dashbord
+
+On peut changer le mot de passe de l'admin du doashboard ceph avec la commande suivante: 
+
+Lancer le ceph-toolbox.
+
+Lancer la commande suivante pour changer le mot de passe.
+
+    ceph dashboard ac-user-set-password admin LeNouveauMotDePasse
+
+Ce changement de mot de passe semble temporaire et je n'ai pas trouvé comment le changer de manière permanente.
     
 ### Mise à jour de l'opérateur rook-ceph et du cluster ceph
 Pour mettre à jour l'opérateur et le cluster...
