@@ -1,16 +1,15 @@
 FROM registry.access.redhat.com/ubi8/ubi
 
-#RUN dnf -y --setopt=tsflags=nodocs update
-RUN dnf -y update
 RUN dnf install -y wget hostname
 # Install language pack
-RUN export GLIBC_VERSION=$(curl https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/ | grep glibc-langpack-fr | awk -F'glibc-langpack-fr-' '{print $2}' | awk -F'.el8.x86_64.rpm' '{print $1}' | tail -1) && \
+ENV LANGPACK_DOWNLOAD_URL=http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages
+RUN export GLIBC_VERSION=$(curl ${LANGPACK_DOWNLOAD_URL}/ | grep glibc-langpack-fr | awk -F'glibc-langpack-fr-' '{print $2}' | awk -F'.el8.x86_64.rpm' '{print $1}' | tail -1) && \
 	dnf install -y \
-	https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/glibc-${GLIBC_VERSION}.el8.x86_64.rpm \
-	https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/glibc-common-${GLIBC_VERSION}.el8.x86_64.rpm \
-	https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/glibc-all-langpacks-${GLIBC_VERSION}.el8.x86_64.rpm \
-	https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/glibc-langpack-fr-${GLIBC_VERSION}.el8.x86_64.rpm \
-	https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/glibc-minimal-langpack-${GLIBC_VERSION}.el8.x86_64.rpm 
+	${LANGPACK_DOWNLOAD_URL}/glibc-${GLIBC_VERSION}.el8.x86_64.rpm \
+	${LANGPACK_DOWNLOAD_URL}/glibc-common-${GLIBC_VERSION}.el8.x86_64.rpm \
+	${LANGPACK_DOWNLOAD_URL}/glibc-all-langpacks-${GLIBC_VERSION}.el8.x86_64.rpm \
+	${LANGPACK_DOWNLOAD_URL}/glibc-langpack-fr-${GLIBC_VERSION}.el8.x86_64.rpm \
+	${LANGPACK_DOWNLOAD_URL}/glibc-minimal-langpack-${GLIBC_VERSION}.el8.x86_64.rpm 
 
 ENV TZ=America/Toronto
 
@@ -27,3 +26,4 @@ ADD install-java.sh /install-java.sh
 RUN chmod a+x /install-ca.sh && chmod a+x /install-java.sh
 RUN /install-java.sh ${JDK_VERSION}
 RUN /install-ca.sh
+RUN dnf -y update
